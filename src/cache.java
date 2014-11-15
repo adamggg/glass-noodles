@@ -1,6 +1,9 @@
+import java.util.HashMap;
+
 
 public class cache {
 	
+	HashMap<Integer, int[]> cache; 
 	int s;
 	int l;
 	int m;
@@ -12,6 +15,7 @@ public class cache {
 	int memory_access_time;
 	
 	public cache(int s, int l, int m){
+		
 		
 	}
 
