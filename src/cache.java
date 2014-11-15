@@ -1,4 +1,4 @@
 
-public abstract class cache {
+public class cache {
 
 }
