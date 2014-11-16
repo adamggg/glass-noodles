@@ -73,47 +73,47 @@ public class cache {
 
 		return splittedAddress;		
 	}
-	
+
 	public String removeOffset(String address) {
 		String tagIndex = address.substring(0,16 - offsetBits);
-		
+
 		for(int i = 0; i < offsetBits; i++){
 			tagIndex+="0";
 		}
-		
+
 		return tagIndex;
-		
-	}
-		
-		
-	public boolean writeCache(String address , String data){
-		HashMap<String, String> splittedAddress = splitAddress(address);
-		String [][] cacheSet=cache.get(splittedAddress.get("index"));
-		if(cacheSet.length < m){
-			cacheSet[cacheSet.length][0]="1";
-			cacheSet[cacheSet.length][1]="0";
-			cacheSet[cacheSet.length][2]=splittedAddress.get("tag");
-			cacheSet[cacheSet.length][3]=data;
-			
-		}else{
-			replace(cacheSet,address,data);
-			
-		}
-		return cacheSet.length-1 < m;
+
 	}
 
-	public boolean replace(String [][] cacheSet,String address,String data){
+
+	public boolean writeCache(String address , String data){
+		HashMap<String, String> splittedAddress = splitAddress(address);
+		String [][] cacheToBeWrittenToSet=cache.get(splittedAddress.get("index"));
+		if(cacheToBeWrittenToSet.length < m){
+			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][0]="1";
+			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][1]="0";
+			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][2]=splittedAddress.get("tag");
+			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][3]=data;
+
+		}else{
+			replace(cacheToBeWrittenToSet,address,data);
+
+		}
+		return cacheToBeWrittenToSet.length-1 < m;
+	}
+
+	public boolean replace(String [][] cacheSetToBeWrittenTo,String address,String data){
 		boolean dirty=false;
 		int chosenToReplaceWith = (int) Math.random()%m;
-		String [] dataTobeReplaced = cacheSet[chosenToReplaceWith];
+		String [] dataTobeReplaced = cacheSetToBeWrittenTo[chosenToReplaceWith];
 		if(writePolicy.equalsIgnoreCase("wt") || dataTobeReplaced[1].equals("1")){
 			writeMemory(address,dataTobeReplaced);
 			dirty=true;
 		}
-		cacheSet[chosenToReplaceWith][0]="1";
-		cacheSet[chosenToReplaceWith][1]="0";
-		cacheSet[chosenToReplaceWith][2]=splitAddress(address).get("tag");
-		cacheSet[chosenToReplaceWith][3]=data;
+		cacheSetToBeWrittenTo[chosenToReplaceWith][0]="1";
+		cacheSetToBeWrittenTo[chosenToReplaceWith][1]="0";
+		cacheSetToBeWrittenTo[chosenToReplaceWith][2]=splitAddress(address).get("tag");
+		cacheSetToBeWrittenTo[chosenToReplaceWith][3]=data;
 		return dirty;
 	}
 
