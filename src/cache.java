@@ -5,6 +5,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 
+import com.sun.corba.se.impl.ior.WireObjectKeyTemplate;
+
 
 public class cache {
 	
@@ -80,6 +82,34 @@ public class cache {
 		}
 		
 		return tagIndex;
+		
+		
+	public boolean writeCache(String address , String data){
+		HashMap<String, String> splittedAddress = splitAddress(address);
+		String [][] cacheSet=cache.get(splittedAddress.get("index"));
+		if(cacheSet.length < m){
+			cacheSet[cacheSet.length][0]="1";
+			cacheSet[cacheSet.length][1]="0";
+			cacheSet[cacheSet.length][2]=splittedAddress.get("tag");
+			cacheSet[cacheSet.length][3]=data;
+			}else
+				replace(cacheSet,address,data);
+		return false;
+	}
+	
+	public boolean replace(String [][] cacheSet,String address,String data){
+		boolean dirty=false;
+		int chosenToReplaceWith = (int) Math.random()%m;
+		String [] dataTobeReplaced = cacheSet[chosenToReplaceWith];
+		if(writePolicy.equalsIgnoreCase("wt") || dataTobeReplaced[1].equals("1")){
+			writeMemory(address,dataTobeReplaced);
+			dirty=true;
+		}
+		cacheSet[chosenToReplaceWith][0]="1";
+		cacheSet[chosenToReplaceWith][1]="0";
+		cacheSet[chosenToReplaceWith][2]=splitAddress(address).get("tag");
+		cacheSet[chosenToReplaceWith][3]=data;
+		return dirty;
 	}
 
 }
