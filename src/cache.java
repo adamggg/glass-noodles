@@ -83,6 +83,8 @@ public class cache {
 		
 		return tagIndex;
 		
+	}
+		
 		
 	public boolean writeCache(String address , String data){
 		HashMap<String, String> splittedAddress = splitAddress(address);
