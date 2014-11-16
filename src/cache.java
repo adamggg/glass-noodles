@@ -36,7 +36,7 @@ public class cache {
 		
 		numberOfLines = (s * 1024) / l;
 		offsetBits = (int) (Math.log(l) / Math.log(2));
-		indexBits = (int) (Math.log(numberOfLines) / Math.log(2));
+		indexBits = (int) (Math.log(numberOfLines / m) / Math.log(2));
 		tagBits = 16 - (offsetBits + indexBits);
 		numberOfSets = numberOfLines / m;
 		
@@ -70,6 +70,16 @@ public class cache {
 		splittedAddress.put("offset" , address.substring(tagBits + indexBits, tagBits + indexBits + offsetBits));
 		
 		return splittedAddress;		
+	}
+	
+	public String removeOffset(String address) {
+		String tagIndex = address.substring(0,16 - offsetBits);
+		
+		for(int i = 0; i < offsetBits; i++){
+			tagIndex+="0";
+		}
+		
+		return tagIndex;
 	}
 
 }
