@@ -10,7 +10,6 @@ public class Microprocessor {
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
 	
-	
 	public String readData(String address){
 		int i = 0;
 		String data = "";
@@ -42,5 +41,19 @@ public class Microprocessor {
 		
 		return block[wordNumber]+block[wordNumber+1];
 		
+	}
+	public void writeCacheRecursively(String address ,int index,boolean iCacheOrDCache){
+		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
+		Cache biggestLineSizeCache = cacheLevels.get(0);
+		for(int i = 1;i<cacheLevels.size();i++){
+			if(cacheLevels.get(i).offsetBits>biggestLineSizeCache.offsetBits)
+				biggestLineSizeCache=cacheLevels.get(i).clone();
+		}
+		String [] dataArray =memory.read(address, biggestLineSizeCache);
+		String data="";
+		for(int i = 0 ;i<dataArray.length;i++)
+			data+=dataArray[i];
+		for(int i = index ; i<cacheLevels.size(); i++)
+			cacheLevels.get(i).writeCache(address, cacheLevels.get(i).trimData(data));
 	}
 }
