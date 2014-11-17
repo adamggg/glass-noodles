@@ -16,9 +16,9 @@ public class cache {
 	String writePolicy;
 	int numberOfCycles;
 	int memoryAccessTime;
-	int tagBits;
-	int indexBits;
-	int offsetBits;
+	static int tagBits;
+	static int indexBits;
+	static int offsetBits;
 	int baseAddress;
 	int numberOfLines;
 	int numberOfSets;
@@ -70,6 +70,18 @@ public class cache {
 		splittedAddress.put("offset" , address.substring(tagBits + indexBits, tagBits + indexBits + offsetBits));
 		
 		return splittedAddress;		
+	}
+	
+	public static int getIndex() {
+		return indexBits;
+	}
+	
+	public static int getOffset() {
+		return offsetBits;
+	}
+	
+	public static int getTag() {
+		return tagBits;
 	}
 
 }
