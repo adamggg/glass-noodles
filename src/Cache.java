@@ -41,9 +41,14 @@ public class Cache {
 		indexBits = (int) (Math.log(numberOfLines / m) / Math.log(2));
 		tagBits = 16 - (offsetBits + indexBits);
 		numberOfSets = numberOfLines / m;
+		
+		String[][] initialArray = new String [m][4];
+		for(int i = 0; i < m ; i++){
+			initialArray[i][0]="0";
+		}
 
 		for(int i = 0; i < numberOfSets ; i++){
-			cache.put(i, new String[m][4]);
+			cache.put(i, initialArray);
 		}
 	}
 		
@@ -59,18 +64,18 @@ public class Cache {
 		return numberOfMisses;
 	}
 
-	public boolean readCache(String address){
+	public String readCache(String address){
 
 		int index = Integer.parseInt(splitAddress(address).get("index"), 2);		
 		String[][] cacheSet = cache.get(index);
 
 		for(int i = 0 ; i < cacheSet.length ; i++){
-			if (cacheSet[i][2].equalsIgnoreCase(splitAddress(address).get("tag"))) {
-				return true;
+			if (cacheSet[i][0].equalsIgnoreCase("1") && cacheSet[i][2].equalsIgnoreCase(splitAddress(address).get("tag"))) {
+				return cacheSet[i][3];
 			}
 		}
 		
-		return false;
+		return null;
 	}
 
 	public HashMap<String, String> splitAddress(String address){
