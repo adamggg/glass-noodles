@@ -54,7 +54,10 @@ public class Microprocessor {
 		String data="";
 		for(int i = 0 ;i<dataArray.length;i++)
 			data+=dataArray[i];
-		for(int i = index ; i<cacheLevels.size(); i++)
+		for(int i = index ; i<cacheLevels.size(); i++){
+			if(cacheLevels.get(i).writePolicy.equalsIgnoreCase("wt"))
+				memory.write(address, data);
 			cacheLevels.get(i).writeCache(address, cacheLevels.get(i).trimData(data));
+		}
 	}
 }

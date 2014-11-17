@@ -118,18 +118,26 @@ public class Cache {
 
 	public boolean writeCache(String address , String data){
 		HashMap<String, String> splittedAddress = splitAddress(address);
-		String [][] cacheToBeWrittenToSet=cache.get(splittedAddress.get("index"));
-		if(cacheToBeWrittenToSet.length < m){
-			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][0]="1";
-			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][1]="0";
-			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][2]=splittedAddress.get("tag");
-			cacheToBeWrittenToSet[cacheToBeWrittenToSet.length][3]=data;
+		String [][] cacheSetToBeWrittenTo=cache.get(splittedAddress.get("index"));
+		for(String [] entry : cacheSetToBeWrittenTo){
+			if(entry[2].equalsIgnoreCase(splitAddress(address).get("tag"))){
+				entry[1]=(writePolicy.equalsIgnoreCase("wb")?"1":"0");
+				entry[3]=data;
+				return true;
+			}
+		}
+		if(cacheSetToBeWrittenTo.length < m){
+			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][0]="1";
+			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][1]="0";
+			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][2]=splittedAddress.get("tag");
+			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][3]=data;
 
 		}else{
-			replace(cacheToBeWrittenToSet,address,data);
+			
+			replace(cacheSetToBeWrittenTo,address,data);
 
 		}
-		return cacheToBeWrittenToSet.length-1 < m;
+		return cacheSetToBeWrittenTo.length-1 < m;
 	}
 
 	public boolean replace(String [][] cacheSetToBeWrittenTo,String address,String data){
