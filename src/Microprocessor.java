@@ -10,17 +10,18 @@ public class Microprocessor {
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
 	
-	public String readData(String address){
+	public String readData(String address, boolean iCacheOrDCache){
+		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
 		int i = 0;
 		String data = "";
 		String offset = "";
-		for(i = 0; i < dCacheLevels.size() ; i++){
-			totalNumberOfCyclesSpentForMemory += dCacheLevels.get(i).getCacheAccessTime();
-			data = dCacheLevels.get(i).readCache(address);
-			offset = dCacheLevels.get(i).splitAddress(address).get("offset");
+		for(i = 0; i < cacheLevels.size() ; i++){
+			totalNumberOfCyclesSpentForMemory += cacheLevels.get(i).getCacheAccessTime();
+			data = cacheLevels.get(i).readCache(address);
+			offset = cacheLevels.get(i).splitAddress(address).get("offset");
 			String [] dataBytes = new String[data.length()/8]; 
 			if(data != null){
-				writeData(address, i-1);
+				writeCacheRecursively(address, i-1, iCacheOrDCache);
 				if (offset.length() == 1){
 					return data;
 				}
@@ -36,8 +37,8 @@ public class Microprocessor {
 		
 		totalNumberOfCyclesSpentForMemory += memory.getMemoryAccessTime();
 		int wordNumber = Integer.parseInt(offset.substring(0, offset.length()-1), 2);
-		String [] block = memory.read(address, dCacheLevels.get(i));
-		writeData(address, i-1);
+		String [] block = memory.read(address, cacheLevels.get(i));
+		writeCacheRecursively(address, i-1, iCacheOrDCache);
 		
 		return block[wordNumber]+block[wordNumber+1];
 		
@@ -47,7 +48,7 @@ public class Microprocessor {
 		Cache biggestLineSizeCache = cacheLevels.get(0);
 		for(int i = 1;i<cacheLevels.size();i++){
 			if(cacheLevels.get(i).offsetBits>biggestLineSizeCache.offsetBits)
-				biggestLineSizeCache=cacheLevels.get(i).clone();
+				biggestLineSizeCache=cacheLevels.get(i);
 		}
 		String [] dataArray =memory.read(address, biggestLineSizeCache);
 		String data="";
