@@ -18,7 +18,7 @@ public class Memory {
 		return this.memoryAccessTime;
 	}
 	
-	public String [] read(String address, cache c) {
+	public String [] read(String address, Cache c) {
 		String index = c.splitAddress(address).get("index");
 		String offset = c.splitAddress(address).get("offset");
 		String tag = c.splitAddress(address).get("tag");

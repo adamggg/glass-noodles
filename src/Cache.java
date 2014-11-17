@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
@@ -129,7 +128,6 @@ public class Cache {
 		int chosenToReplaceWith = (int) Math.random()%m;
 		String [] dataTobeReplaced = cacheSetToBeWrittenTo[chosenToReplaceWith];
 		if(writePolicy.equalsIgnoreCase("wt") || dataTobeReplaced[1].equals("1")){
-			writeMemory(address,dataTobeReplaced);
 			dirty=true;
 		}
 		cacheSetToBeWrittenTo[chosenToReplaceWith][0]="1";

@@ -3,8 +3,8 @@ import java.util.ArrayList;
 
 public class Microprocessor {
 
-	ArrayList<cache> cacheLevels;
-	memory memory;
+	ArrayList<Cache> cacheLevels;
+	Memory memory;
 	int pc;
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
