@@ -18,9 +18,9 @@ public class cache {
 	String writePolicy;
 	int numberOfCycles;
 	int memoryAccessTime;
-	static int tagBits;
-	static int indexBits;
-	static int offsetBits;
+	int tagBits;
+	int indexBits;
+	int offsetBits;
 	int baseAddress;
 	int numberOfLines;
 	int numberOfSets;
@@ -45,6 +45,10 @@ public class cache {
 		for(int i = 0; i < numberOfSets ; i++){
 			cache.put(i, new String[m][4]);
 		}
+	}
+
+	public cache() {
+		// TODO Auto-generated constructor stub
 	}
 
 	public String readCache(String address){
@@ -74,15 +78,15 @@ public class cache {
 		return splittedAddress;		
 	}
 	
-	public static int getIndex() {
+	public int getIndex() {
 		return indexBits;
 	}
 	
-	public static int getOffset() {
+	public int getOffset() {
 		return offsetBits;
 	}
 	
-	public static int getTag() {
+	public int getTag() {
 		return tagBits;
 	}
 

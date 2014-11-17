@@ -1,4 +1,3 @@
-import java.util.HashMap;
 
 public class memory {
 	
@@ -14,35 +13,26 @@ public class memory {
 		return this.InstructionsBaseAddress;
 	}
 	
-	public HashMap<String, String> splitAddress(String address){
-		HashMap<String, String> splittedAddress = new HashMap<String, String>();
-
-		splittedAddress.put("tag", address.substring(0, cache.tagBits));
-		splittedAddress.put("index", address.substring(cache.tagBits, cache.tagBits + cache.indexBits));
-		splittedAddress.put("offset" , address.substring(cache.tagBits + cache.indexBits, cache.tagBits + cache.indexBits + cache.offsetBits));
+	public String [] read(String address, cache c) {
+		String index = c.splitAddress(address).get("index");
+		String offset = c.splitAddress(address).get("offset");
+		String tag = c.splitAddress(address).get("tag");
 		
-		return splittedAddress;		
-	}
-	
-	public String [] read(String address) {
-		String index = splitAddress(address).get("index");
-		String offset = splitAddress(address).get("offset");
-		
-		String x = index + offset;
+		String x = tag + index + offset;
 		
 		String startRangeMask = "";
-		for(int i=0; i<cache.indexBits; i++) {
+		for(int i=0; i<(c.indexBits+c.tagBits); i++) {
 			startRangeMask += 1;
 		}
-		for(int i=0; i<cache.offsetBits; i++) {
+		for(int i=0; i<c.offsetBits; i++) {
 			startRangeMask += 0;
 		}
 		
 		String endRangeMask = "";
-		for(int i=0; i<cache.indexBits; i++) {
+		for(int i=0; i<(c.indexBits+c.tagBits); i++) {
 			endRangeMask += 0;
 		}
-		for(int i=0; i<cache.offsetBits; i++) {
+		for(int i=0; i<c.offsetBits; i++) {
 			endRangeMask += 1;
 		}
 		
@@ -85,7 +75,5 @@ public class memory {
 		
 		return dataWritten;
 	}
-	
-	
 
 }
