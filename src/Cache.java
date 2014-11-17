@@ -5,10 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 
-
-
-
-public class cache {
+public class Cache {
 
 	HashMap<Integer, String[][]> cache; 
 	File configurationFile;
@@ -16,24 +13,28 @@ public class cache {
 	int l;
 	int m;
 	String writePolicy;
-	int numberOfCycles;
-	int memoryAccessTime;
+	int cacheAccessTime;
 	int tagBits;
 	int indexBits;
 	int offsetBits;
 	int baseAddress;
 	int numberOfLines;
 	int numberOfSets;
+	int numberOfHits;
+	int numberOfMisses;
+	
+	public Cache() {
+		// TODO Auto-generated constructor stub
+	}
 
-	public cache(File configurationFile) throws NumberFormatException, IOException{
+	public Cache(File configurationFile) throws NumberFormatException, IOException{
 		this.configurationFile = configurationFile;	
 		BufferedReader configurationFileReader = new BufferedReader(new FileReader(this.configurationFile)); 
 		s = Integer.parseInt(configurationFileReader.readLine());
 		l = Integer.parseInt(configurationFileReader.readLine());
 		m = Integer.parseInt(configurationFileReader.readLine());
 		writePolicy = configurationFileReader.readLine();
-		numberOfCycles = Integer.parseInt(configurationFileReader.readLine());
-		memoryAccessTime = Integer.parseInt(configurationFileReader.readLine()); // Heya di tefre2 eh 3an elly ablaha ?!
+		cacheAccessTime = Integer.parseInt(configurationFileReader.readLine());
 		configurationFileReader.close();
 
 		numberOfLines = (s * 1024) / l;
@@ -46,26 +47,31 @@ public class cache {
 			cache.put(i, new String[m][4]);
 		}
 	}
-
-	public cache() {
-		// TODO Auto-generated constructor stub
+		
+	public int getCacheAccessTime(){
+		return cacheAccessTime;
+	}
+	
+	public int getNumberOfHits(){
+		return numberOfHits;
+	}
+	
+	public int getNumberOfMisses(){
+		return numberOfMisses;
 	}
 
-	public String readCache(String address){
+	public boolean readCache(String address){
 
 		int index = Integer.parseInt(splitAddress(address).get("index"), 2);		
 		String[][] cacheSet = cache.get(index);
 
 		for(int i = 0 ; i < cacheSet.length ; i++){
 			if (cacheSet[i][2].equalsIgnoreCase(splitAddress(address).get("tag"))) {
-				return cacheSet[i][3];
+				return true;
 			}
 		}
-
-		String data = readMemory(address);
-		writeCache(address, data);
-
-		return data;
+		
+		return false;
 	}
 
 	public HashMap<String, String> splitAddress(String address){
@@ -134,8 +140,5 @@ public class cache {
 	}
 
 }
-
-
-
 
 
