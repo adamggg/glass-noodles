@@ -41,6 +41,8 @@ public class Cache {
 		indexBits = (int) (Math.log(numberOfLines / m) / Math.log(2));
 		tagBits = 16 - (offsetBits + indexBits);
 		numberOfSets = numberOfLines / m;
+		numberOfHits = 0;
+		numberOfMisses = 0;
 		
 		String[][] initialArray = new String [m][4];
 		for(int i = 0; i < m ; i++){
@@ -71,10 +73,12 @@ public class Cache {
 
 		for(int i = 0 ; i < cacheSet.length ; i++){
 			if (cacheSet[i][0].equalsIgnoreCase("1") && cacheSet[i][2].equalsIgnoreCase(splitAddress(address).get("tag"))) {
+				numberOfHits++;
 				return cacheSet[i][3];
 			}
 		}
 		
+		numberOfMisses++;
 		return null;
 	}
 
