@@ -1,16 +1,21 @@
 
-public class memory {
+public class Memory {
 	
 	String [] memory;
 	int InstructionsBaseAddress;
+	int memoryAccessTime;
 	
-	public memory(String [] memory, int insBaseAddress) {
+	public Memory(String [] memory, int insBaseAddress) {
 		this.memory = memory;
 		this.InstructionsBaseAddress = insBaseAddress;
 	}
 	
 	public int getInstructionBaseAddress() {
 		return this.InstructionsBaseAddress;
+	}
+	
+	public int getMemoryAccessTime() {
+		return this.memoryAccessTime;
 	}
 	
 	public String [] read(String address, cache c) {
