@@ -136,7 +136,9 @@ public class Cache {
 		cacheSetToBeWrittenTo[chosenToReplaceWith][3]=data;
 		return dirty;
 	}
-
+	public String trimData(String data){
+		return data.substring(0, (int) (Math.pow(2, offsetBits)*8));
+	}
 }
 
 
