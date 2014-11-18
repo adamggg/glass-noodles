@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.ArrayList;
 
 
@@ -9,6 +10,12 @@ public class Microprocessor {
 	int pc;
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
+	
+	public Microprocessor(File file) {
+		this.pc = this.memory.getInstructionBaseAddress();
+		this.numberOfInstructionsExcuted = 0;
+		this.totalNumberOfCyclesSpentForMemory = 0;
+	}
 	
 	public String readData(String address, boolean iCacheOrDCache){
 		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
@@ -56,5 +63,33 @@ public class Microprocessor {
 			data+=dataArray[i];
 		for(int i = index ; i<cacheLevels.size(); i++)
 			cacheLevels.get(i).writeCache(address, cacheLevels.get(i).trimData(data));
+	}
+	
+	public String to16BinaryStringAddress(int address) {
+		String returnAddress = Integer.toBinaryString(address);
+		
+		while(returnAddress.length() < 16) {
+			returnAddress = "0" + returnAddress;
+		}
+		
+		return returnAddress;
+	}
+	
+	public void execute() {
+		int address = this.pc;
+		String dataAddress = to16BinaryStringAddress(address);
+		
+		String data = readData(dataAddress, true);
+		
+		
+	}
+	
+	public static void main(String [] args) {
+		Integer x = 5;
+		String y = Integer.toBinaryString(x);
+		while(y.length() < 16) {
+			y = "0" + y;
+		}
+		System.out.println(y);
 	}
 }
