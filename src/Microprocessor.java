@@ -14,9 +14,10 @@ public class Microprocessor {
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
 	HashMap<Integer, String> registers;
+	assembler a;
 	
 	public Microprocessor(File file) {
-		assembler a = new assembler(file);
+		this.a = new assembler(file);
 		int baseAddress = a.getBaseAddress();
 		String [] memory = a.getMemoryArray();
 		this.memory = new Memory(memory, baseAddress);
@@ -110,9 +111,15 @@ public class Microprocessor {
 			String regB = data.substring(6, 9);
 			String immediateValue = data.substring(9, 16);
 			
+			int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
 			
+			if (a.getAddressesMapping().containsKey(memoryAddress)){
+				memoryAddress = a.getAddressesMapping().get(memoryAddress);
+			}
 			
+			String readData = readData(to16BinaryStringValue(memoryAddress), false);
 			
+			registers.put(Integer.parseInt(regA), readData);
 			
 			
 		}

@@ -1,9 +1,11 @@
 import java.io.File;
+import java.util.HashMap;
 
 
 public class assembler {
 	String [] memory;
 	int baseAddress;
+	HashMap<Integer, Integer> addressesMapping;
 	
 	public assembler(File file) {
 		this.memory = new String[4];
@@ -20,6 +22,10 @@ public class assembler {
 	
 	public int getBaseAddress() {
 		return this.baseAddress;
+	}
+	
+	public HashMap<Integer, Integer> getAddressesMapping(){
+		return this.addressesMapping;
 	}
 	
 	
