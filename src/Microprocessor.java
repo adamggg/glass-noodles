@@ -99,10 +99,6 @@ public class Microprocessor {
 		String data = readData(dataAddress, true);
 		
 		if(data.startsWith("100")) {
-			//load
-			/*Load word: Loads value from memory into regA. 
-			 * Memory address is formed by adding imm with contents of regB, 
-			 * where imm is a 7-bit signed immediate value (ranging from -64 to 63).*/
 			
 			String regA = data.substring(3, 6);
 			String regB = data.substring(6, 9);
