@@ -1,6 +1,8 @@
 import java.io.File;
 import java.util.ArrayList;
 
+import javax.xml.crypto.Data;
+
 
 public class Microprocessor {
 
@@ -12,9 +14,16 @@ public class Microprocessor {
 	int totalNumberOfCyclesSpentForMemory;
 	
 	public Microprocessor(File file) {
+		assembler a = new assembler(file);
+		int baseAddress = a.getBaseAddress();
+		String [] memory = a.getMemoryArray();
+		this.memory = new Memory(memory, baseAddress);
+		
 		this.pc = this.memory.getInstructionBaseAddress();
 		this.numberOfInstructionsExcuted = 0;
 		this.totalNumberOfCyclesSpentForMemory = 0;
+		
+		//cache part
 	}
 	
 	public String readData(String address, boolean iCacheOrDCache){
@@ -83,6 +92,40 @@ public class Microprocessor {
 		String dataAddress = to16BinaryStringAddress(address);
 		
 		String data = readData(dataAddress, true);
+		
+		if(data.startsWith("100")) {
+			//load
+		}
+		else if(data.startsWith("101")) {
+			//store
+		}
+		else if(data.startsWith("110")) {
+			//BEQ
+		}
+		else if(data.startsWith("111")) {
+			//AddI
+		}
+		else if(data.startsWith("0000000")) {
+			//Add
+		}
+		else if(data.startsWith("0000001")) {
+			//SUB
+		}
+		else if(data.startsWith("0000010")) {
+			//NAND
+		}
+		else if(data.startsWith("0000011")) {
+			//MUL
+		}
+		else if(data.startsWith("001000")) {
+			//JMP
+		}
+		else if(data.startsWith("0100000000")) {
+			//JALR
+		}
+		else if(data.startsWith("0110000000000")) {
+			//RET
+		}
 		
 		
 	}
