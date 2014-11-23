@@ -2,9 +2,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import javax.xml.crypto.Data;
-
-
 public class Microprocessor {
 
 	ArrayList<Cache> iCacheLevels;
@@ -177,6 +174,12 @@ public class Microprocessor {
 		}
 		else if(data.startsWith("0100000000")) {
 			//JALR
+			int regA = Integer.parseInt(data.substring(10, 13));
+			int regB = Integer.parseInt(data.substring(13, 16));
+			
+			this.pc = Integer.parseInt(registers.get(regB), 2);
+			
+			registers.put(regA, to16BinaryStringValue(this.pc));
 		}
 		else if(data.startsWith("0110000000000")) {
 			//RET
@@ -198,33 +201,4 @@ public class Microprocessor {
 		return result;
 	}
 	
-	public static void main(String [] args) {
-		Integer x = 5;
-		String y = Integer.toBinaryString(x);
-		while(y.length() < 16) {
-			y = "0" + y;
-		}
-		System.out.println(y);
-		
-		String s = "0000000111000101";
-		System.out.println("=====");
-		System.out.println(s.substring(13, 16));
-		
-		String op1 = "0000000000000110";
-		String op2 = "0000000000000100";
-		int result = ~(Integer.parseInt(op1,2)&Integer.parseInt(op2,2));
-		System.out.println("=====");
-		System.out.println(result);
-		
-		String res = Integer.toBinaryString(result);
-		res = res.substring(16);
-		System.out.println("=====");
-		System.out.println(res);
-		
-		String a = "010";
-		String b = "011";
-		int c = Integer.parseInt(a,2) + Integer.parseInt(b, 2);
-		System.out.println("=====");
-		System.out.println(Integer.toBinaryString(c));
-	}
 }
