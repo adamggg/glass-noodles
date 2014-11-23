@@ -13,7 +13,7 @@ public class Microprocessor {
 	int pc;
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
-	HashMap<Integer, Integer> registers;
+	HashMap<Integer, String> registers;
 	
 	public Microprocessor(File file) {
 		assembler a = new assembler(file);
@@ -25,9 +25,9 @@ public class Microprocessor {
 		this.numberOfInstructionsExcuted = 0;
 		this.totalNumberOfCyclesSpentForMemory = 0;
 		
-		this.registers = new HashMap<Integer, Integer>();
+		this.registers = new HashMap<Integer, String>();
 		for (int i = 0; i < 8; i++) {
-			registers.put(i, 0);
+			registers.put(i, "");
 		}
 		
 		//cache part
@@ -102,6 +102,19 @@ public class Microprocessor {
 		
 		if(data.startsWith("100")) {
 			//load
+			/*Load word: Loads value from memory into regA. 
+			 * Memory address is formed by adding imm with contents of regB, 
+			 * where imm is a 7-bit signed immediate value (ranging from -64 to 63).*/
+			
+			String regA = data.substring(3, 6);
+			String regB = data.substring(6, 9);
+			String immideateValue = data.substring(9, 16);
+			
+			
+			
+			
+			
+			
 		}
 		else if(data.startsWith("101")) {
 			//store
@@ -163,6 +176,19 @@ public class Microprocessor {
 		}
 		
 		
+	}
+	
+	public static int signedBinaryToDecimal(String signed){
+		int result = 0;		
+		if (signed.startsWith("1")){
+			signed = signed.replace('0', '2').replace('1', '0').replace('2', '1');
+			result = 0 - (Integer.parseInt(signed, 2) + 1);
+		}
+		else {
+			result = Integer.parseInt(signed, 2);
+		}
+		
+		return result;
 	}
 	
 	public static void main(String [] args) {
