@@ -2,9 +2,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import javax.xml.crypto.Data;
-
-
 public class Microprocessor {
 
 	ArrayList<Cache> iCacheLevels;
@@ -170,6 +167,12 @@ public class Microprocessor {
 		}
 		else if(data.startsWith("0100000000")) {
 			//JALR
+			int regA = Integer.parseInt(data.substring(10, 13));
+			int regB = Integer.parseInt(data.substring(13, 16));
+			
+			this.pc = Integer.parseInt(registers.get(regB), 2);
+			
+			registers.put(regA, to16BinaryStringValue(this.pc));
 		}
 		else if(data.startsWith("0110000000000")) {
 			//RET
@@ -219,5 +222,7 @@ public class Microprocessor {
 		int c = Integer.parseInt(a,2) + Integer.parseInt(b, 2);
 		System.out.println("=====");
 		System.out.println(Integer.toBinaryString(c));
+		
+		System.out.println(Integer.parseInt("1111111111111111",2));
 	}
 }
