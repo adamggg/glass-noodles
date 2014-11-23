@@ -114,15 +114,43 @@ public class Microprocessor {
 		}
 		else if(data.startsWith("0000000")) {
 			//Add
+			int regA = Integer.parseInt(data.substring(7, 10));
+			int regB = Integer.parseInt(data.substring(10, 13));
+			int regC = Integer.parseInt(data.substring(13, 16));
+			
+			int result = registers.get(regB) + registers.get(regC);
+			
+			registers.put(regA, result);
 		}
 		else if(data.startsWith("0000001")) {
 			//SUB
+			int regA = Integer.parseInt(data.substring(7, 10));
+			int regB = Integer.parseInt(data.substring(10, 13));
+			int regC = Integer.parseInt(data.substring(13, 16));
+			
+			int result = registers.get(regB) - registers.get(regC);
+			
+			registers.put(regA, result);
 		}
 		else if(data.startsWith("0000010")) {
 			//NAND
+			int regA = Integer.parseInt(data.substring(7, 10));
+			int regB = Integer.parseInt(data.substring(10, 13));
+			int regC = Integer.parseInt(data.substring(13, 16));
+			
+			int result = ~(registers.get(regB) & registers.get(regC));
+			
+			registers.put(regA, result);
 		}
 		else if(data.startsWith("0000011")) {
 			//MUL
+			int regA = Integer.parseInt(data.substring(7, 10));
+			int regB = Integer.parseInt(data.substring(10, 13));
+			int regC = Integer.parseInt(data.substring(13, 16));
+			
+			int result = registers.get(regB) * registers.get(regC);
+			
+			registers.put(regA, result);
 		}
 		else if(data.startsWith("001000")) {
 			//JMP
@@ -144,5 +172,20 @@ public class Microprocessor {
 			y = "0" + y;
 		}
 		System.out.println(y);
+		
+		String s = "0000000111000101";
+		System.out.println("=====");
+		System.out.println(s.substring(13, 16));
+		
+		String op1 = "0000000000000110";
+		String op2 = "0000000000000100";
+		int result = ~(Integer.parseInt(op1,2)&Integer.parseInt(op2,2));
+		System.out.println("=====");
+		System.out.println(result);
+		
+		String res = Integer.toBinaryString(result);
+		res = res.substring(16);
+		System.out.println("=====");
+		System.out.println(res);
 	}
 }
