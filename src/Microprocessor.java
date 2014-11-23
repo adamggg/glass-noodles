@@ -24,7 +24,8 @@ public class Microprocessor {
 		this.totalNumberOfCyclesSpentForMemory = 0;
 		
 		this.registers = new HashMap<Integer, String>();
-		for (int i = 0; i < 8; i++) {
+		registers.put(0, "0000000000000000");
+		for (int i = 1; i < 8; i++) {
 			registers.put(i, "");
 		}
 		
@@ -99,7 +100,7 @@ public class Microprocessor {
 		String data = readData(dataAddress, true);
 		
 		if(data.startsWith("100")) {
-			
+			//load
 			String regA = data.substring(3, 6);
 			String regB = data.substring(6, 9);
 			String immediateValue = data.substring(9, 16);
@@ -133,7 +134,9 @@ public class Microprocessor {
 			
 			int result = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
 			
-			registers.put(regA, to16BinaryStringValue(result));
+			if(regA != 0) {
+				registers.put(regA, to16BinaryStringValue(result));
+			}
 		}
 		else if(data.startsWith("0000001")) {
 			//SUB
@@ -143,7 +146,9 @@ public class Microprocessor {
 			
 			int result = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
 			
-			registers.put(regA, to16BinaryStringValue(result));
+			if(regA != 0) {
+				registers.put(regA, to16BinaryStringValue(result));
+			}
 		}
 		else if(data.startsWith("0000010")) {
 			//NAND
@@ -153,7 +158,9 @@ public class Microprocessor {
 			
 			int result = ~(Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
 			
-			registers.put(regA, to16BinaryStringValue(result));
+			if (regA != 0) {
+				registers.put(regA, to16BinaryStringValue(result));
+			}
 		}
 		else if(data.startsWith("0000011")) {
 			//MUL
@@ -163,7 +170,9 @@ public class Microprocessor {
 			
 			int result = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
 			
-			registers.put(regA, to16BinaryStringValue(result));
+			if(regA != 0) {
+				registers.put(regA, to16BinaryStringValue(result));
+			}
 		}
 		else if(data.startsWith("001000")) {
 			//JMP
@@ -175,10 +184,15 @@ public class Microprocessor {
 			
 			this.pc = Integer.parseInt(registers.get(regB), 2);
 			
-			registers.put(regA, to16BinaryStringValue(this.pc));
+			if (regA != 0) {
+				registers.put(regA, to16BinaryStringValue(this.pc));
+			}
 		}
 		else if(data.startsWith("0110000000000")) {
 			//RET
+			int regA = Integer.parseInt(data.substring(13, 16));
+			
+			this.pc = Integer.parseInt(registers.get(regA),2);
 		}
 		
 		
