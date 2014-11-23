@@ -1,5 +1,6 @@
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.xml.crypto.Data;
 
@@ -12,6 +13,7 @@ public class Microprocessor {
 	int pc;
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
+	HashMap<Integer, Integer> registers;
 	
 	public Microprocessor(File file) {
 		assembler a = new assembler(file);
@@ -22,6 +24,11 @@ public class Microprocessor {
 		this.pc = this.memory.getInstructionBaseAddress();
 		this.numberOfInstructionsExcuted = 0;
 		this.totalNumberOfCyclesSpentForMemory = 0;
+		
+		this.registers = new HashMap<Integer, Integer>();
+		for (int i = 0; i < 8; i++) {
+			registers.put(i, 0);
+		}
 		
 		//cache part
 	}
