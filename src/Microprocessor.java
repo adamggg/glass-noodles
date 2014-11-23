@@ -108,7 +108,7 @@ public class Microprocessor {
 			
 			String regA = data.substring(3, 6);
 			String regB = data.substring(6, 9);
-			String immideateValue = data.substring(9, 16);
+			String immediateValue = data.substring(9, 16);
 			
 			
 			
