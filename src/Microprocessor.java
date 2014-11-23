@@ -84,19 +84,19 @@ public class Microprocessor {
 		}
 	}
 	
-	public String to16BinaryStringAddress(int address) {
-		String returnAddress = Integer.toBinaryString(address);
+	public String to16BinaryStringValue(int value) {
+		String returnValue = Integer.toBinaryString(value);
 		
-		while(returnAddress.length() < 16) {
-			returnAddress = "0" + returnAddress;
+		while(returnValue.length() < 16) {
+			returnValue = "0" + returnValue;
 		}
 		
-		return returnAddress;
+		return returnValue;
 	}
 	
 	public void execute() {
 		int address = this.pc;
-		String dataAddress = to16BinaryStringAddress(address);
+		String dataAddress = to16BinaryStringValue(address);
 		
 		String data = readData(dataAddress, true);
 		
@@ -131,9 +131,9 @@ public class Microprocessor {
 			int regB = Integer.parseInt(data.substring(10, 13));
 			int regC = Integer.parseInt(data.substring(13, 16));
 			
-			int result = registers.get(regB) + registers.get(regC);
+			int result = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
 			
-			registers.put(regA, result);
+			registers.put(regA, to16BinaryStringValue(result));
 		}
 		else if(data.startsWith("0000001")) {
 			//SUB
@@ -141,9 +141,9 @@ public class Microprocessor {
 			int regB = Integer.parseInt(data.substring(10, 13));
 			int regC = Integer.parseInt(data.substring(13, 16));
 			
-			int result = registers.get(regB) - registers.get(regC);
+			int result = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
 			
-			registers.put(regA, result);
+			registers.put(regA, to16BinaryStringValue(result));
 		}
 		else if(data.startsWith("0000010")) {
 			//NAND
@@ -151,9 +151,9 @@ public class Microprocessor {
 			int regB = Integer.parseInt(data.substring(10, 13));
 			int regC = Integer.parseInt(data.substring(13, 16));
 			
-			int result = ~(registers.get(regB) & registers.get(regC));
+			int result = ~(Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
 			
-			registers.put(regA, result);
+			registers.put(regA, to16BinaryStringValue(result));
 		}
 		else if(data.startsWith("0000011")) {
 			//MUL
@@ -161,9 +161,9 @@ public class Microprocessor {
 			int regB = Integer.parseInt(data.substring(10, 13));
 			int regC = Integer.parseInt(data.substring(13, 16));
 			
-			int result = registers.get(regB) * registers.get(regC);
+			int result = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
 			
-			registers.put(regA, result);
+			registers.put(regA, to16BinaryStringValue(result));
 		}
 		else if(data.startsWith("001000")) {
 			//JMP
@@ -213,5 +213,11 @@ public class Microprocessor {
 		res = res.substring(16);
 		System.out.println("=====");
 		System.out.println(res);
+		
+		String a = "010";
+		String b = "011";
+		int c = Integer.parseInt(a,2) + Integer.parseInt(b, 2);
+		System.out.println("=====");
+		System.out.println(Integer.toBinaryString(c));
 	}
 }
