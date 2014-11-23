@@ -204,7 +204,7 @@ public class Microprocessor {
 			this.pc = Integer.parseInt(registers.get(regA),2);
 		}
 		
-		
+		this.pc += 2;
 	}
 	
 	public static int signedBinaryToDecimal(String signed){
