@@ -108,128 +108,151 @@ public class Microprocessor {
 	
 	public void execute() {
 		int address = this.pc;
-		String dataAddress = to16BinaryStringValue(address);
-		
+		String dataAddress = to16BinaryStringValue(address);		
 		String data = readData(dataAddress, true, "");
 		
-		if(data.startsWith("100")) {
-			//load
-			String regA = data.substring(3, 6);
-			String regB = data.substring(6, 9);
-			String immediateValue = data.substring(9, 16);
+		while (data != null) {
 			
-			int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
-			
-			if (a.getAddressesMapping().containsKey(memoryAddress)){
-				memoryAddress = a.getAddressesMapping().get(memoryAddress);
+			if(data.startsWith("100")) {
+				//load
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+				
+				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+				
+				if (a.getAddressesMapping().containsKey(memoryAddress)){
+					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+				}
+				
+				String readData = readData(to16BinaryStringValue(memoryAddress), false, "");
+				
+				registers.put(regA, readData);
+				
+				
+			}
+			else if(data.startsWith("101")) {
+				//store
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+				
+				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+				
+				if (a.getAddressesMapping().containsKey(memoryAddress)){
+					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+				}
+				
+				readData(to16BinaryStringValue(memoryAddress), false, registers.get(regA));
+				
+			}
+			else if(data.startsWith("110")) {
+				//BEQ
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+				
+				String regAValue = registers.get(regA);
+				String regBValue = registers.get(regB);
+				
+				if(regAValue.equalsIgnoreCase(regBValue)){
+					this.pc = this.pc + 2 + signedBinaryToDecimal(immediateValue) - 2; 
+				}
+				
+			}
+			else if(data.startsWith("111")) {
+				//AddI
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				int immediateValue = signedBinaryToDecimal(data.substring(9, 16));
+				
+				int result = Integer.parseInt(registers.get(regB), 2) + immediateValue;
+				
+				if (regA != 0) {
+					registers.put(regA, to16BinaryStringValue(result));
+				}
+			}
+			else if(data.startsWith("0000000")) {
+				//Add
+				int regA = Integer.parseInt(data.substring(7, 10), 2);
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+				
+				int result = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
+				
+				if(regA != 0) {
+					registers.put(regA, to16BinaryStringValue(result));
+				}
+			}
+			else if(data.startsWith("0000001")) {
+				//SUB
+				int regA = Integer.parseInt(data.substring(7, 10), 2);
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+				
+				int result = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
+				
+				if(regA != 0) {
+					registers.put(regA, to16BinaryStringValue(result));
+				}
+			}
+			else if(data.startsWith("0000010")) {
+				//NAND
+				int regA = Integer.parseInt(data.substring(7, 10), 2);
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+				
+				int result = ~(Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
+				
+				if (regA != 0) {
+					registers.put(regA, to16BinaryStringValue(result));
+				}
+			}
+			else if(data.startsWith("0000011")) {
+				//MUL
+				int regA = Integer.parseInt(data.substring(7, 10), 2 );
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+				
+				int result = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
+				
+				if(regA != 0) {
+					registers.put(regA, to16BinaryStringValue(result));
+				}
+			}
+			else if(data.startsWith("001000")) {
+				//JMP
+				int regA = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+				
+				String regAValue = registers.get(regA);
+				
+				this.pc = this.pc + 2 + Integer.parseInt(registers.get(regA), 2) + signedBinaryToDecimal(immediateValue) - 2; 
+				
+			}
+			else if(data.startsWith("0100000000")) {
+				//JALR
+				int regA = Integer.parseInt(data.substring(10, 13), 2);
+				int regB = Integer.parseInt(data.substring(13, 16), 2);
+				
+				this.pc = Integer.parseInt(registers.get(regB), 2);
+				
+				if (regA != 0) {
+					registers.put(regA, to16BinaryStringValue(this.pc));
+				}
+			}
+			else if(data.startsWith("0110000000000")) {
+				//RET
+				int regA = Integer.parseInt(data.substring(13, 16), 2);
+				
+				this.pc = Integer.parseInt(registers.get(regA), 2);
 			}
 			
-			String readData = readData(to16BinaryStringValue(memoryAddress), false, "");
-			
-			registers.put(Integer.parseInt(regA), readData);
-			
-			
+			this.pc += 2;
+			address = this.pc;
+			dataAddress = to16BinaryStringValue(address);		
+			data = readData(dataAddress, true, "");
 		}
-		else if(data.startsWith("101")) {
-			//store
-			String regA = data.substring(3, 6);
-			String regB = data.substring(6, 9);
-			String immediateValue = data.substring(9, 16);
-			
-			int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
-			
-			if (a.getAddressesMapping().containsKey(memoryAddress)){
-				memoryAddress = a.getAddressesMapping().get(memoryAddress);
-			}
-			
-			readData(to16BinaryStringValue(memoryAddress), false, registers.get(Integer.parseInt(regA)));
-			
-		}
-		else if(data.startsWith("110")) {
-			//BEQ
-		}
-		else if(data.startsWith("111")) {
-			//AddI
-			int regA = Integer.parseInt(data.substring(3, 6));
-			int regB = Integer.parseInt(data.substring(6, 9));
-			int immediateValue = signedBinaryToDecimal(data.substring(9, 16));
-			
-			int result = Integer.parseInt(registers.get(regB), 2) + immediateValue;
-			
-			if (regA != 0) {
-				registers.put(regA, to16BinaryStringValue(result));
-			}
-		}
-		else if(data.startsWith("0000000")) {
-			//Add
-			int regA = Integer.parseInt(data.substring(7, 10));
-			int regB = Integer.parseInt(data.substring(10, 13));
-			int regC = Integer.parseInt(data.substring(13, 16));
-			
-			int result = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
-			
-			if(regA != 0) {
-				registers.put(regA, to16BinaryStringValue(result));
-			}
-		}
-		else if(data.startsWith("0000001")) {
-			//SUB
-			int regA = Integer.parseInt(data.substring(7, 10));
-			int regB = Integer.parseInt(data.substring(10, 13));
-			int regC = Integer.parseInt(data.substring(13, 16));
-			
-			int result = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
-			
-			if(regA != 0) {
-				registers.put(regA, to16BinaryStringValue(result));
-			}
-		}
-		else if(data.startsWith("0000010")) {
-			//NAND
-			int regA = Integer.parseInt(data.substring(7, 10));
-			int regB = Integer.parseInt(data.substring(10, 13));
-			int regC = Integer.parseInt(data.substring(13, 16));
-			
-			int result = ~(Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
-			
-			if (regA != 0) {
-				registers.put(regA, to16BinaryStringValue(result));
-			}
-		}
-		else if(data.startsWith("0000011")) {
-			//MUL
-			int regA = Integer.parseInt(data.substring(7, 10));
-			int regB = Integer.parseInt(data.substring(10, 13));
-			int regC = Integer.parseInt(data.substring(13, 16));
-			
-			int result = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
-			
-			if(regA != 0) {
-				registers.put(regA, to16BinaryStringValue(result));
-			}
-		}
-		else if(data.startsWith("001000")) {
-			//JMP
-		}
-		else if(data.startsWith("0100000000")) {
-			//JALR
-			int regA = Integer.parseInt(data.substring(10, 13));
-			int regB = Integer.parseInt(data.substring(13, 16));
-			
-			this.pc = Integer.parseInt(registers.get(regB), 2);
-			
-			if (regA != 0) {
-				registers.put(regA, to16BinaryStringValue(this.pc));
-			}
-		}
-		else if(data.startsWith("0110000000000")) {
-			//RET
-			int regA = Integer.parseInt(data.substring(13, 16));
-			
-			this.pc = Integer.parseInt(registers.get(regA),2);
-		}
-		
-		this.pc += 2;
 	}
 	
 	public static int signedBinaryToDecimal(String signed){
