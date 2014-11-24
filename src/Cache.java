@@ -40,6 +40,8 @@ public class Cache {
 		numberOfHits = 0;
 		numberOfMisses = 0;
 		
+		this.cache = new HashMap<Integer, String[][]>();
+		
 		String[][] initialArray = new String [m][4];
 		for(int i = 0; i < m ; i++){
 			initialArray[i][0]="0";
@@ -84,7 +86,6 @@ public class Cache {
 		splittedAddress.put("tag", address.substring(0, tagBits));
 		splittedAddress.put("index", address.substring(tagBits, tagBits + indexBits));
 		splittedAddress.put("offset" , address.substring(tagBits + indexBits, tagBits + indexBits + offsetBits));
-
 		return splittedAddress;		
 	}
 	
@@ -114,10 +115,11 @@ public class Cache {
 
 	public boolean writeCache(String address , String data, boolean dirty){
 		HashMap<String, String> splittedAddress = splitAddress(address);
-		String [][] cacheSetToBeWrittenTo=cache.get(splittedAddress.get("index"));
+//		System.out.println(Integer.parseInt(splittedAddress.get("index"),2));
+		String [][] cacheSetToBeWrittenTo=cache.get(Integer.parseInt(splittedAddress.get("index"),2));
 		boolean writeInMemory=false;
 		for(String [] entry : cacheSetToBeWrittenTo){
-			if(entry[2].equalsIgnoreCase(splitAddress(address).get("tag"))){
+			if(entry[2]!=null && entry[2].equalsIgnoreCase(splitAddress(address).get("tag"))){
 				entry[1]=(writePolicy.equalsIgnoreCase("wb")?"1":"0");
 				entry[3]=data;
 			}
