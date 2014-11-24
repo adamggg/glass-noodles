@@ -4,9 +4,15 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Scanner;
 
 
 public class assembler {
+	
+	String[] outArray;
+	int startAddress;
+	//HashMap<Integer, Integer> hashMemory;
 
 	public assembler() {
 
@@ -16,30 +22,130 @@ public class assembler {
 		
 		BufferedReader b = new BufferedReader(new FileReader(f));
 		String l = b.readLine();
-		while(l != null){
+		outArray = new String[65536];
+		
+
+		
+		if(l.equalsIgnoreCase("CODE")){
 			
-			if(l.equalsIgnoreCase("DATA")){
+			String a = b.readLine();
+			startAddress = Integer.parseInt(a , 16);
+			int address = startAddress;
+			String data = b.readLine();
+			
+			while(!data.equalsIgnoreCase("DATA")){
 				
-				String data = b.readLine();
-				while(data != "CODE"){
+				String instr = assembleInstruction(data);
+				String i1 = "";
+				String i2 = "";
+				int i;
+				for(i = 0 ; i<=7 ; i++){
 					
-					
+					i1+=instr.charAt(i);
 				}
+				//first byte of the instr
+				outArray[address++] = i1;
+				for(i=8 ; i<=15 ; i++){
+					
+					i2+=instr.charAt(i);
+				}
+				//second byte of the instr 
+				outArray[address++] = i2;
+				data = b.readLine();
 				
 			}
 			
+			if(data.equalsIgnoreCase("DATA")){
+				
+				
+				
+				while(b.ready()){
+					data = b.readLine();
+					String[] d = data.split(",");
+					String s = d[0];
+					String s1 = d[1];
+					int val = Integer.parseInt(s);
+					int valAddress = Integer.parseInt(s1 , 16);
+					String binVal = signExtend(val, 16, 's');
+					String Val1 = "";
+					String Val2 = "";
+					int i;
+					//getting first byte of data
+					for(i=0 ; i<=7 ; i++){
+						
+						Val1 += binVal.charAt(i);
+					}
+				
+					
+					//getting second byte of data 
+					for(i=8 ; i<=15 ; i++){
+						
+						Val2 += binVal.charAt(i);
+					}
+					
+					outArray[valAddress++] = Val1;
+					outArray[valAddress] = Val2;
+				
+					/*
+					//checking if specified address and the one after it are ready to hold 2 bytes data 
+					if(outArray[valAddress]==null && outArray[valAddress+1]==null && (valAddress+1) < outArray.length){
+						
+						outArray[valAddress++] = Val1;
+						outArray[valAddress] = Val2;
+						
+					}
+					else{
+						//checking for two empty consecutive cells in memory to hold 2 bytes data and save the new address
+						boolean flag = false;
+						for(int j = 0 ; j<outArray.length ; j++){
+							
+							if(outArray[j]==null && outArray[j+1]==null && (j+1) < outArray.length){
+								hashMemory.put(valAddress , j);
+								outArray[j++] = Val1;
+								outArray[j] = Val2;
+								flag = true;
+								break;
+							}
+							
+						}
+						if(flag==false)
+							System.out.println("memory is full");
+					}
+					*/
+					
+					
+					
+				}
+			}	
+			else{
+				
+				System.out.print("The file you entered is in the wrong format");
+			}
 			
-		} 
+		
+			
+			
+			
+		}
+		else{
+			
+			System.out.print("The file you entered is in the wrong format");
+		}
+			
+			
+		b.close(); 
 		
 
 	}
 
 	private static String assembleInstruction(String instruction) {
 		String[] parsedInst = instruction.toUpperCase().split(" ");
+		
 		String inst = parsedInst[0];
 		String s = parsedInst[1];
 		String[] operands = s.toUpperCase().split(",");
 
+	
 		if (inst.equals("JMP") || inst.equals("JALR")) {
 			
 			String o1 = operands[0];
@@ -127,7 +233,7 @@ public class assembler {
 		
 		String bNum = Integer.toBinaryString(num);
 		if(c=='s'){
-			int k = 7-bNum.length();
+			int k = n-bNum.length();
 			if(num >=0){
 				
 				for(int i=1 ; i<=k ; i++){
@@ -151,9 +257,40 @@ public class assembler {
 		return bNum;
 		
 	}
+	protected int getBaseAddress(){
+		
+		return startAddress;
+	}
+	protected String[] getMemoryArray(){
+		
+		return outArray;
+	}
+	/*protected HashMap getAddressesMapping(){
+		
+		return hashMemory;
+	}*/
 	
 	
-	public static void main(String...args) {
+	public static void main(String...args) throws IOException {
+		
+		
+		Scanner sc = new Scanner(System.in);
+		System.out.println("Please enter the directory for your file , your file should look like this :-" +"\n"+"\n"
+				+"CODE"+"\n"+"Base Address  (write the base address for your program and remove the 0x ; just write the value)"
+				+"\n"+"first program instruction"+"\n"+"second program instruction"+"\n"+"third program instruction"+"\n"
+				+"....."+"\n"+".....  (the instruction should look like this : instName operand1,operand2,... )"+"\n"
+				+"DATA"+"\n"+"value1,address1"+"\n"+"value2,address2"+"\n"+"value3,address3"+"\n"+"....."+"\n"+".....  "
+				+"(the data address should also be writtin in hexamdecimal with no 0x or H ; just the value)"+"\n"+"\n"+
+				"Some guidelines to follow :"+"\n"+"1)No additional/missing spaces if not specified in the above format are allowed ."
+				+"\n"+"2)No additional/missing semicollons are allowed ."+"\n"+"3)Semicollon should be inserted in between two operands ."+
+				"\n"+"4)No empty lines are allowed within the text or after it which means that the text file should start with the word "+
+				"\"CODE\""+"\n"+"  and ends with the last data value ."+"\n"+"5)The word \"CODE\" comes before your program code at the "
+				+"very first line of the file" +"\n"+"  and the word \"DATA\" comes before the data separting between the code and the data lines."
+				+"\n"+"**ANY TEXT FILE VIOLATING ONE OF THE ABOVE CONDITIONS WILL NOT BE ACCEPTED :)"+"\n"+"Enter Directory here : ");
+		String f = sc.nextLine();
+		File file = new File(f);
+		assembler a = new assembler(file);
+		
 		/*String x = "reg1";
 		
 		
@@ -177,7 +314,7 @@ public class assembler {
 		
 		
 		}
-		*/
+		
 		String y = "JALR R1,R2";
 		String z = "RET R6";	
 		String x = "BEQ R1,R2,-64";
@@ -185,7 +322,43 @@ public class assembler {
 		System.out.println(assembleInstruction(x));
 		System.out.println(assembleInstruction(x).length());
 		
+		String h = "A";
+		int x = Integer.parseInt(h , 16);
+		System.out.println(x);
 		
+		int x = 6 ;
+		System.out.println(Integer.toBinaryString(x));
+		int x1 = -6 ;
+		System.out.println(Integer.toBinaryString(x1));
+		
+		
+		String a = "0110110000110011";
+		String i3 = "";
+		int i;
+		for(i = 0; i<=7 ; i++){
+			
+			i3 += a.charAt(i);
+		}
+		String i4 = "";
+		for(i =i; i<=15 ; i++){
+		
+			i4 += a.charAt(i);
+		}
+		System.out.println(i3 +','+i4);
+		
+		//testing the assembler with a giving file 
+		File f = new File("file.txt");
+		assembler a = new assembler(f);
+		for(int i = 0 ; i<=120 ; i++){
+			
+			System.out.println(a.getMemoryArray()[i]);
+		}
+		System.out.println("hello"+a.getMemoryArray()[100]);
+		System.out.println("hello"+a.getBaseAddress());
+		*/
+		
+		
+
 		
 	}
 }
