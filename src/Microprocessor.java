@@ -122,9 +122,9 @@ public class Microprocessor {
 				
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
 				
-				if (a.getAddressesMapping().containsKey(memoryAddress)){
-					memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				}
+//				if (a.getAddressesMapping().containsKey(memoryAddress)){
+//					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+//				}
 				
 				String readData = readData(to16BinaryStringValue(memoryAddress), false, "");
 				
@@ -140,9 +140,9 @@ public class Microprocessor {
 				
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
 				
-				if (a.getAddressesMapping().containsKey(memoryAddress)){
-					memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				}
+//				if (a.getAddressesMapping().containsKey(memoryAddress)){
+//					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+//				}
 				
 				readData(to16BinaryStringValue(memoryAddress), false, registers.get(regA));
 				
@@ -250,6 +250,7 @@ public class Microprocessor {
 			}
 			
 			this.pc += 2;
+			numberOfInstructionsExcuted++;
 			address = this.pc;
 			dataAddress = to16BinaryStringValue(address);		
 			data = readData(dataAddress, true, "");
@@ -266,6 +267,26 @@ public class Microprocessor {
 			result = Integer.parseInt(signed, 2);
 		}
 		
+		return result;
+	}
+	public int[] getGlobalAmat(){
+		int globalAmatICache=iCacheLevels.get(0).getCacheAccessTime();
+		int globalAmatDCache=dCacheLevels.get(0).getCacheAccessTime();
+		for(int i =1;i<iCacheLevels.size();i++){
+			int hitRatio = iCacheLevels.get(i-1).getMissPenalty();
+			int missPen = iCacheLevels.get(i).getCacheAccessTime();
+			if(i==iCacheLevels.size()-1)
+				missPen = memory.getMemoryAccessTime();
+			globalAmatICache+=hitRatio*missPen;
+		}
+		for(int i =1;i<dCacheLevels.size();i++){
+			int hitRatio = dCacheLevels.get(i-1).getMissPenalty();
+			int missPen = dCacheLevels.get(i).getCacheAccessTime();
+			if(i==dCacheLevels.size()-1)
+				missPen = memory.getMemoryAccessTime();
+			globalAmatDCache+=hitRatio*missPen;
+		}
+		int [] result = {globalAmatDCache,globalAmatICache};
 		return result;
 	}
 }
