@@ -148,13 +148,11 @@ public class Microprocessor {
 	}
 	
 	public void execute() {
-		
 		int address = this.pc;
 		String dataAddress = to16BinaryStringValue(address);		
 		String data = readData(dataAddress, true, "");
-	
 		
-			
+		while(!data.equalsIgnoreCase("nullnull")){
 			if(data.startsWith("100")) {
 				//load
 				int regA = Integer.parseInt(data.substring(3, 6), 2);
@@ -296,6 +294,15 @@ public class Microprocessor {
 			address = this.pc;
 			dataAddress = to16BinaryStringValue(address);		
 			data = readData(dataAddress, true, "");
+			for(int i = 0;i<dCacheLevels.size();i++){
+				System.out.println("the hit ratio for d cache of level "+i+" is "+dCacheLevels.get(i).getHitRatio());
+			}
+			for(int i = 0;i<iCacheLevels.size();i++){
+				System.out.println("the hit ratio for i cache of level "+i+" is "+iCacheLevels.get(i).getHitRatio());
+			}
+			System.out.println("the global AMAT for d cache is : "+getGlobalAmat()[0]);
+			System.out.println("the global AMAT for i cache is : "+getGlobalAmat()[1]);
+		}
 		}
 	
 	public static int signedBinaryToDecimal(String signed){
@@ -310,37 +317,32 @@ public class Microprocessor {
 		
 		return result;
 	}
-	public int[] getGlobalAmat(){
-		int globalAmatICache=iCacheLevels.get(0).getCacheAccessTime();
-		int globalAmatDCache=dCacheLevels.get(0).getCacheAccessTime();
+	public double[] getGlobalAmat(){
+		double globalAmatICache=iCacheLevels.get(0).getCacheAccessTime();
+		double globalAmatDCache=dCacheLevels.get(0).getCacheAccessTime();
 		for(int i =1;i<iCacheLevels.size();i++){
-			int hitRatio = iCacheLevels.get(i-1).getMissPenalty();
-			int missPen = iCacheLevels.get(i).getCacheAccessTime();
+			double hitRatio = iCacheLevels.get(i-1).getMissPenalty();
+			double missPen = iCacheLevels.get(i).getCacheAccessTime();
 			if(i==iCacheLevels.size()-1)
 				missPen = memory.getMemoryAccessTime();
 			globalAmatICache+=hitRatio*missPen;
 		}
 		for(int i =1;i<dCacheLevels.size();i++){
-			int hitRatio = dCacheLevels.get(i-1).getMissPenalty();
-			int missPen = dCacheLevels.get(i).getCacheAccessTime();
+			double hitRatio = dCacheLevels.get(i-1).getMissPenalty();
+			double missPen = dCacheLevels.get(i).getCacheAccessTime();
 			if(i==dCacheLevels.size()-1)
 				missPen = memory.getMemoryAccessTime();
 			globalAmatDCache+=hitRatio*missPen;
 		}
-		int [] result = {globalAmatDCache,globalAmatICache};
+		double [] result = {globalAmatDCache,globalAmatICache};
 		return result;
 		}
 
 	
 	public static void main(String[] args) throws IOException {
-		
 		Microprocessor m = new Microprocessor(new File("config"), new File("prog"));
-		int i = 0;
-		while(i < 4){
-			m.execute();
-			i++;
-		}
-		System.out.println(m.registers.get(2));
-		System.out.println(m.memory.memory[0]+m.memory.memory[1]);
+		m.execute();
+		
+		
 	}
 }
