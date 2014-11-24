@@ -1,4 +1,6 @@
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,7 +17,7 @@ public class Microprocessor {
 	Assembler a;
 	
 	public Microprocessor(File file) throws IOException {
-		this.a = new Assembler(file);
+//		this.a = new Assembler(new File(""));
 		int baseAddress = a.getBaseAddress();
 		String [] memory = a.getMemoryArray();
 		this.memory = new Memory(memory, baseAddress);
@@ -31,6 +33,32 @@ public class Microprocessor {
 		}
 		
 		//cache part
+		BufferedReader configFile = new BufferedReader(new FileReader(file));
+		int level = 0;
+		int s, l, m, cacheAccessTime;
+		String writePolicy;
+		while(configFile.ready()) {
+			//D-Cache
+			configFile.readLine();
+			s = Integer.parseInt(configFile.readLine());
+			l = Integer.parseInt(configFile.readLine());
+			m = Integer.parseInt(configFile.readLine());
+			writePolicy = configFile.readLine();
+			cacheAccessTime = Integer.parseInt(configFile.readLine());
+			dCacheLevels.add(level, new Cache(s, l, m, writePolicy, cacheAccessTime));
+			
+			//I-Cache
+			configFile.readLine();
+			s = Integer.parseInt(configFile.readLine());
+			l = Integer.parseInt(configFile.readLine());
+			m = Integer.parseInt(configFile.readLine());
+			writePolicy = configFile.readLine();
+			cacheAccessTime = Integer.parseInt(configFile.readLine());
+			iCacheLevels.add(level, new Cache(s, l, m, writePolicy, cacheAccessTime));
+			
+			configFile.readLine();
+			level++;
+		}
 		
 	}
 	
@@ -122,9 +150,9 @@ public class Microprocessor {
 				
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
 				
-				if (a.getAddressesMapping().containsKey(memoryAddress)){
-					memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				}
+//				if (a.getAddressesMapping().containsKey(memoryAddress)){
+//					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+//				}
 				
 				String readData = readData(to16BinaryStringValue(memoryAddress), false, "");
 				
@@ -140,9 +168,9 @@ public class Microprocessor {
 				
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
 				
-				if (a.getAddressesMapping().containsKey(memoryAddress)){
-					memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				}
+//				if (a.getAddressesMapping().containsKey(memoryAddress)){
+//					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+//				}
 				
 				readData(to16BinaryStringValue(memoryAddress), false, registers.get(regA));
 				
@@ -267,5 +295,11 @@ public class Microprocessor {
 		}
 		
 		return result;
+	}
+	
+	public static void main(String[] args) {
+		
+		Microprocessor m = new Microprocessor(file)
+		
 	}
 }

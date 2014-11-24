@@ -7,7 +7,6 @@ import java.util.HashMap;
 public class Cache {
 
 	HashMap<Integer, String[][]> cache; 
-	File configurationFile;
 	int s;
 	int l;
 	int m;
@@ -26,16 +25,13 @@ public class Cache {
 		// TODO Auto-generated constructor stub
 	}
 
-	public Cache(File configurationFile) throws NumberFormatException, IOException{
-		this.configurationFile = configurationFile;	
-		BufferedReader configurationFileReader = new BufferedReader(new FileReader(this.configurationFile)); 
-		s = Integer.parseInt(configurationFileReader.readLine());
-		l = Integer.parseInt(configurationFileReader.readLine());
-		m = Integer.parseInt(configurationFileReader.readLine());
-		writePolicy = configurationFileReader.readLine();
-		cacheAccessTime = Integer.parseInt(configurationFileReader.readLine());
-		configurationFileReader.close();
-
+	public Cache(int s, int l, int m, String writePolicy, int cacheAccessTime){
+		this.s = s;
+		this.l = l;
+		this.m = m;
+		this.writePolicy = writePolicy;
+		this.cacheAccessTime = cacheAccessTime;
+		
 		numberOfLines = (s * 1024) / l;
 		offsetBits = (int) (Math.log(l) / Math.log(2));
 		indexBits = (int) (Math.log(numberOfLines / m) / Math.log(2));
