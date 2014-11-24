@@ -8,17 +8,17 @@ import java.util.HashMap;
 import java.util.Scanner;
 
 
-public class assembler {
+public class Assembler {
 	
 	String[] outArray;
 	int startAddress;
 	//HashMap<Integer, Integer> hashMemory;
 
-	public assembler() {
+	public Assembler() {
 
 	}
 
-	public assembler(File f) throws IOException {
+	public Assembler(File f) throws IOException {
 		
 		BufferedReader b = new BufferedReader(new FileReader(f));
 		String l = b.readLine();
@@ -289,7 +289,7 @@ public class assembler {
 				+"\n"+"**ANY TEXT FILE VIOLATING ONE OF THE ABOVE CONDITIONS WILL NOT BE ACCEPTED :)"+"\n"+"Enter Directory here : ");
 		String f = sc.nextLine();
 		File file = new File(f);
-		assembler a = new assembler(file);
+		Assembler a = new Assembler(file);
 		
 		/*String x = "reg1";
 		
