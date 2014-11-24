@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -11,10 +12,10 @@ public class Microprocessor {
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
 	HashMap<Integer, String> registers;
-	assembler a;
+	Assembler a;
 	
-	public Microprocessor(File file) {
-		this.a = new assembler(file);
+	public Microprocessor(File file) throws IOException {
+		this.a = new Assembler(file);
 		int baseAddress = a.getBaseAddress();
 		String [] memory = a.getMemoryArray();
 		this.memory = new Memory(memory, baseAddress);
