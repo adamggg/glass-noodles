@@ -18,7 +18,7 @@ public class Assembler {
 
 	}
 
-	public Assembler(File f) throws IOException {
+	public Assembler(File f) throws Exception {
 		
 		BufferedReader b = new BufferedReader(new FileReader(f));
 		String l = b.readLine();
@@ -74,9 +74,13 @@ public class Assembler {
 					else{
 						val = Integer.parseInt(s);
 					}
+					
 				
 					s1 = s1.substring(2, s1.length());
 					valAddress = Integer.parseInt(s1 , 16);
+					if(valAddress>=startAddress && valAddress<= address-1){
+						throw new Exception("the address "+d[1]+" you are trying to write to is a READONLY address in memeory!!");
+					}
 					String binVal = signExtend(val, 16, 's');
 					String Val1 = "";
 					String Val2 = "";
@@ -282,7 +286,7 @@ public class Assembler {
 	}*/
 	
 	
-	public static void main(String...args) throws IOException {
+	public static void main(String...args) throws Exception {
 		
 		
 		Scanner sc = new Scanner(System.in);
@@ -301,6 +305,8 @@ public class Assembler {
 		String f = sc.nextLine();
 		File file = new File(f);
 		Assembler a = new Assembler(file);
+		for(int i = 0 ; i<=120 ; i++)
+			System.out.println(a.getMemoryArray()[i]);
 		
 		/*String x = "reg1";
 		

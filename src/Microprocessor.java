@@ -4,6 +4,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Scanner;
 
 public class Microprocessor {
 
@@ -16,7 +17,7 @@ public class Microprocessor {
 	HashMap<Integer, String> registers;
 	Assembler a;
 	
-	public Microprocessor(File confFile, File assemblerFile) throws IOException {
+	public Microprocessor(File confFile, File assemblerFile) throws Exception {
 		this.dCacheLevels = new ArrayList<Cache>();
 		this.iCacheLevels = new ArrayList<Cache>();
 		this.a = new Assembler(assemblerFile);
@@ -339,10 +340,26 @@ public class Microprocessor {
 		}
 
 	
-	public static void main(String[] args) throws IOException {
-		Microprocessor m = new Microprocessor(new File("config"), new File("prog"));
+	public static void main(String[] args) throws Exception {
+		Scanner sc = new Scanner(System.in);
+		System.out.println("Please enter the directory for your file , your file should look like this :-" +"\n"+"\n"
+				+"CODE"+"\n"+"Base Address  (write the base address for your program and remove the 0x ; just write the value)"
+				+"\n"+"first program instruction"+"\n"+"second program instruction"+"\n"+"third program instruction"+"\n"
+				+"....."+"\n"+".....  (the instruction should look like this : instName operand1,operand2,... )"+"\n"
+				+"DATA"+"\n"+"value1,address1"+"\n"+"value2,address2"+"\n"+"value3,address3"+"\n"+"....."+"\n"+".....  "
+				+"(the data address should also be writtin in hexamdecimal with no 0x or H ; just the value)"+"\n"+"\n"+
+				"Some guidelines to follow :"+"\n"+"1)No additional/missing spaces if not specified in the above format are allowed ."
+				+"\n"+"2)No additional/missing semicollons are allowed ."+"\n"+"3)Semicollon should be inserted in between two operands ."+
+				"\n"+"4)No empty lines are allowed within the text or after it which means that the text file should start with the word "+
+				"\"CODE\""+"\n"+"  and ends with the last data value ."+"\n"+"5)The word \"CODE\" comes before your program code at the "
+				+"very first line of the file" +"\n"+"  and the word \"DATA\" comes before the data separting between the code and the data lines."
+				+"\n"+"**ANY TEXT FILE VIOLATING ONE OF THE ABOVE CONDITIONS WILL NOT BE ACCEPTED :)");
+		System.out.println("enter the program file path: ");
+		String prog = sc.nextLine();
+		System.out.println("enter the config file path: ");
+		String config = sc.nextLine();
+		Microprocessor m = new Microprocessor(new File(config), new File(prog));
+		sc.close();
 		m.execute();
-		
-		
 	}
 }
