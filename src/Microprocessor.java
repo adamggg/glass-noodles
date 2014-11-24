@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 
+import com.sun.xml.internal.ws.api.pipe.NextAction;
+
 public class Microprocessor {
 
 	ArrayList<Cache> iCacheLevels;
@@ -244,7 +246,7 @@ public class Microprocessor {
 				int regB = Integer.parseInt(data.substring(10, 13), 2);
 				int regC = Integer.parseInt(data.substring(13, 16), 2);
 				
-				int result = ~(Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
+				int result = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
 				
 				if (regA != 0) {
 					registers.put(regA, to16BinaryStringValue(result));
@@ -277,17 +279,19 @@ public class Microprocessor {
 				int regA = Integer.parseInt(data.substring(10, 13), 2);
 				int regB = Integer.parseInt(data.substring(13, 16), 2);
 				
-				this.pc = Integer.parseInt(registers.get(regB), 2);
-				
 				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(this.pc));
+					registers.put(regA, to16BinaryStringValue(this.pc+2));
 				}
+				this.pc = Integer.parseInt(registers.get(regB), 2)-2;
+				
+				
+				
 			}
 			else if(data.startsWith("0110000000000")) {
 				//RET
 				int regA = Integer.parseInt(data.substring(13, 16), 2);
 				
-				this.pc = Integer.parseInt(registers.get(regA), 2);
+				this.pc = Integer.parseInt(registers.get(regA), 2)-2;
 			}
 			
 			this.pc += 2;
