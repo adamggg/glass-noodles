@@ -31,18 +31,18 @@ public class Microprocessor {
 		//cache part
 	}
 	
-	public String readData(String address, boolean iCacheOrDCache){
+	public String readData(String address, boolean iCacheOrDCache, String dataToBeStored){
 		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
 		int i = 0;
 		String data = "";
 		String offset = "";
 		for(i = 0; i < cacheLevels.size() ; i++){
 			totalNumberOfCyclesSpentForMemory += cacheLevels.get(i).getCacheAccessTime();
-			data = cacheLevels.get(i).readCache(address);
+			data = cacheLevels.get(i).readCache(address);			
 			offset = cacheLevels.get(i).splitAddress(address).get("offset");
 			String [] dataBytes = new String[data.length()/8]; 
 			if(data != null){
-				writeCacheRecursively(address, i-1, iCacheOrDCache);
+				writeCacheRecursively(address, i-1, iCacheOrDCache,dataToBeStored);
 				if (offset.length() == 1){
 					return data;
 				}
@@ -58,8 +58,8 @@ public class Microprocessor {
 		
 		totalNumberOfCyclesSpentForMemory += memory.getMemoryAccessTime();
 		int wordNumber = Integer.parseInt(offset.substring(0, offset.length()-1), 2);
-		String [] block = memory.read(address, cacheLevels.get(i));
-		writeCacheRecursively(address, i-1, iCacheOrDCache);
+		String [] block = memory.read(address, cacheLevels.get(i-1));
+		writeCacheRecursively(address, i-1, iCacheOrDCache,dataToBeStored);
 		
 		return block[wordNumber]+block[wordNumber+1];
 		
@@ -96,10 +96,10 @@ public class Microprocessor {
 		int address = this.pc;
 		String dataAddress = to16BinaryStringValue(address);
 		
-		String data = readData(dataAddress, true);
+		String data = readData(dataAddress, true, "");
 		
 		if(data.startsWith("100")) {
-			
+			//load
 			String regA = data.substring(3, 6);
 			String regB = data.substring(6, 9);
 			String immediateValue = data.substring(9, 16);
@@ -110,7 +110,7 @@ public class Microprocessor {
 				memoryAddress = a.getAddressesMapping().get(memoryAddress);
 			}
 			
-			String readData = readData(to16BinaryStringValue(memoryAddress), false);
+			String readData = readData(to16BinaryStringValue(memoryAddress), false, "");
 			
 			registers.put(Integer.parseInt(regA), readData);
 			
@@ -118,6 +118,18 @@ public class Microprocessor {
 		}
 		else if(data.startsWith("101")) {
 			//store
+			String regA = data.substring(3, 6);
+			String regB = data.substring(6, 9);
+			String immediateValue = data.substring(9, 16);
+			
+			int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+			
+			if (a.getAddressesMapping().containsKey(memoryAddress)){
+				memoryAddress = a.getAddressesMapping().get(memoryAddress);
+			}
+			
+			readData(to16BinaryStringValue(memoryAddress), false, registers.get(Integer.parseInt(regA)));
+			
 		}
 		else if(data.startsWith("110")) {
 			//BEQ
