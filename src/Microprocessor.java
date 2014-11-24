@@ -105,10 +105,14 @@ public class Microprocessor {
 	public void writeCacheRecursively(String address ,int index,boolean iCacheOrDCache ,
 			String dataToBeStored){
 		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
-		for(int i = index ; i >= 0; i--){
+		if(!dataToBeStored.equalsIgnoreCase("")&& index<cacheLevels.size()-1){
+			index++;
+		}
+		for(int i = index ;i >= 0; i--){
 			String [] dataArray =memory.read(address, cacheLevels.get(i));
 			String data="";
 			boolean dirty=false;
+			
 			int wordNumber =(cacheLevels.get(i).splitAddress(address)
 					.get("offset").length()==1)?0:Integer.parseInt(cacheLevels.get(i).splitAddress(address)
 					.get("offset").substring(0,cacheLevels.get(i).splitAddress(address).
@@ -144,11 +148,11 @@ public class Microprocessor {
 	}
 	
 	public void execute() {
-		//System.out.println(pc);
+		
 		int address = this.pc;
 		String dataAddress = to16BinaryStringValue(address);		
 		String data = readData(dataAddress, true, "");
-		
+	
 		
 			
 			if(data.startsWith("100")) {
@@ -212,8 +216,6 @@ public class Microprocessor {
 			}
 			else if(data.startsWith("0000000")) {
 				//Add
-				registers.put(2,"0000000000000001");
-				registers.put(3,"0000000000000001");
 				int regA = Integer.parseInt(data.substring(7, 10), 2);
 				int regB = Integer.parseInt(data.substring(10, 13), 2);
 				int regC = Integer.parseInt(data.substring(13, 16), 2);
@@ -223,7 +225,7 @@ public class Microprocessor {
 				if(regA != 0) {
 					registers.put(regA, to16BinaryStringValue(result));
 				}
-				System.out.println(registers.get(regA));
+				
 			}
 			else if(data.startsWith("0000001")) {
 				//SUB
@@ -311,11 +313,13 @@ public class Microprocessor {
 	
 	public static void main(String[] args) throws IOException {
 		
-		Microprocessor m = new Microprocessor(new File("config"), new File("file.txt"));
+		Microprocessor m = new Microprocessor(new File("config"), new File("prog"));
 		int i = 0;
-		while(i < 10){
+		while(i < 4){
 			m.execute();
 			i++;
 		}
+		System.out.println(m.registers.get(2));
+		System.out.println(m.memory.memory[0]+m.memory.memory[1]);
 	}
 }

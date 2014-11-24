@@ -41,13 +41,13 @@ public class Cache {
 		numberOfMisses = 0;
 		
 		this.cache = new HashMap<Integer, String[][]>();
-		
-		String[][] initialArray = new String [m][4];
-		for(int i = 0; i < m ; i++){
-			initialArray[i][0]="0";
-		}
+
 
 		for(int i = 0; i < numberOfSets ; i++){
+			String[][] initialArray = new String [m][4];
+			for(int k = 0; k < m ; k++){
+				initialArray[k][0]="0";
+			}
 			cache.put(i, initialArray);
 		}
 	}
@@ -115,7 +115,6 @@ public class Cache {
 
 	public boolean writeCache(String address , String data, boolean dirty){
 		HashMap<String, String> splittedAddress = splitAddress(address);
-//		System.out.println(Integer.parseInt(splittedAddress.get("index"),2));
 		String [][] cacheSetToBeWrittenTo=cache.get(Integer.parseInt(splittedAddress.get("index"),2));
 		boolean writeInMemory=false;
 		for(String [] entry : cacheSetToBeWrittenTo){
@@ -124,14 +123,18 @@ public class Cache {
 				entry[3]=data;
 			}
 		}
-		if(cacheSetToBeWrittenTo.length < m){
-			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][0]="1";
-			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][1]=(dirty)?"1":"0";
-			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][2]=splittedAddress.get("tag");
-			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][3]=data;
+		int i=0;
+		System.out.println(Integer.parseInt(splittedAddress.get("index"),2));
+		for( i = 0;i<cacheSetToBeWrittenTo.length;i++)
+			if(cacheSetToBeWrittenTo[i][2]==null)
+				break;
+		if(i<m){
+			cacheSetToBeWrittenTo[i][0]="1";
+			cacheSetToBeWrittenTo[i][1]=(dirty)?"1":"0";
+			cacheSetToBeWrittenTo[i][2]=splittedAddress.get("tag");
+			cacheSetToBeWrittenTo[i][3]=data;
 
 		}else{
-			
 			 writeInMemory=replace(cacheSetToBeWrittenTo,address,data,dirty);
 
 		}
@@ -142,7 +145,7 @@ public class Cache {
 		boolean memoryAcess=false;
 		int chosenToReplaceWith = (int) Math.random()%m;
 		String [] dataTobeReplaced = cacheSetToBeWrittenTo[chosenToReplaceWith];
-		if(writePolicy.equalsIgnoreCase("wt") || dataTobeReplaced[1].equals("1")){
+		if(dataTobeReplaced[1]!=null &&dataTobeReplaced[1].equals("1")){
 			memoryAcess=true;
 		}
 		cacheSetToBeWrittenTo[chosenToReplaceWith][0]="1";
