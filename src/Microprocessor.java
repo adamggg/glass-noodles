@@ -42,7 +42,7 @@ public class Microprocessor {
 			offset = cacheLevels.get(i).splitAddress(address).get("offset");
 			String [] dataBytes = new String[data.length()/8]; 
 			if(data != null){
-				writeCacheRecursively(address, i-1, iCacheOrDCache);
+				writeCacheRecursively(address, i-1, iCacheOrDCache,"");
 				if (offset.length() == 1){
 					return data;
 				}
@@ -59,26 +59,38 @@ public class Microprocessor {
 		totalNumberOfCyclesSpentForMemory += memory.getMemoryAccessTime();
 		int wordNumber = Integer.parseInt(offset.substring(0, offset.length()-1), 2);
 		String [] block = memory.read(address, cacheLevels.get(i));
-		writeCacheRecursively(address, i-1, iCacheOrDCache);
+		writeCacheRecursively(address, i-1, iCacheOrDCache,"");
 		
 		return block[wordNumber]+block[wordNumber+1];
 		
 	}
-	public void writeCacheRecursively(String address ,int index,boolean iCacheOrDCache){
+	public void writeCacheRecursively(String address ,int index,boolean iCacheOrDCache ,
+			String dataToBeStored){
 		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
-		Cache biggestLineSizeCache = cacheLevels.get(0);
-		for(int i = 1;i<cacheLevels.size();i++){
-			if(cacheLevels.get(i).offsetBits>biggestLineSizeCache.offsetBits)
-				biggestLineSizeCache=cacheLevels.get(i);
-		}
-		String [] dataArray =memory.read(address, biggestLineSizeCache);
-		String data="";
-		for(int i = 0 ;i<dataArray.length;i++)
-			data+=dataArray[i];
-		for(int i = index ; i<cacheLevels.size(); i++){
-			if(cacheLevels.get(i).writePolicy.equalsIgnoreCase("wt"))
+		for(int i = index ; i >= 0; i--){
+			String [] dataArray =memory.read(address, cacheLevels.get(i));
+			String data="";
+			boolean dirty=false;
+			int wordNumber = Integer.parseInt(cacheLevels.get(i).splitAddress(address)
+					.get("offset").substring(0,cacheLevels.get(i).splitAddress(address).
+							get("offset").length()-1), 2);
+			for(int j = 0 ;j<dataArray.length;j++)
+				if(!dataToBeStored.equalsIgnoreCase("") && j==wordNumber){
+					data+=dataToBeStored;
+					dirty=true;
+					j++;
+				}
+				else
+					if(dataArray[j]==null)
+						data+="$$$$$$$$";
+					else
+						data+=dataArray[j];
+			if(cacheLevels.get(i).writePolicy.equalsIgnoreCase("wt")){
 				memory.write(address, data);
-			cacheLevels.get(i).writeCache(address, cacheLevels.get(i).trimData(data));
+				totalNumberOfCyclesSpentForMemory += memory.getMemoryAccessTime();
+			}
+			if(cacheLevels.get(i).writeCache(address, cacheLevels.get(i).trimData(data),dirty))
+				totalNumberOfCyclesSpentForMemory += cacheLevels.get(i).getCacheAccessTime();
 		}
 	}
 	
@@ -196,5 +208,4 @@ public class Microprocessor {
 		
 		return result;
 	}
-	
 }

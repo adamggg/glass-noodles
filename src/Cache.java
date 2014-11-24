@@ -116,42 +116,42 @@ public class Cache {
 	}
 
 
-	public boolean writeCache(String address , String data){
+	public boolean writeCache(String address , String data, boolean dirty){
 		HashMap<String, String> splittedAddress = splitAddress(address);
 		String [][] cacheSetToBeWrittenTo=cache.get(splittedAddress.get("index"));
+		boolean writeInMemory=false;
 		for(String [] entry : cacheSetToBeWrittenTo){
 			if(entry[2].equalsIgnoreCase(splitAddress(address).get("tag"))){
 				entry[1]=(writePolicy.equalsIgnoreCase("wb")?"1":"0");
 				entry[3]=data;
-				return true;
 			}
 		}
 		if(cacheSetToBeWrittenTo.length < m){
 			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][0]="1";
-			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][1]="0";
+			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][1]=(dirty)?"1":"0";
 			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][2]=splittedAddress.get("tag");
 			cacheSetToBeWrittenTo[cacheSetToBeWrittenTo.length][3]=data;
 
 		}else{
 			
-			replace(cacheSetToBeWrittenTo,address,data);
+			 writeInMemory=replace(cacheSetToBeWrittenTo,address,data,dirty);
 
 		}
-		return cacheSetToBeWrittenTo.length-1 < m;
+		return writeInMemory;
 	}
 
-	public boolean replace(String [][] cacheSetToBeWrittenTo,String address,String data){
-		boolean dirty=false;
+	public boolean replace(String [][] cacheSetToBeWrittenTo,String address,String data,boolean dirty){
+		boolean memoryAcess=false;
 		int chosenToReplaceWith = (int) Math.random()%m;
 		String [] dataTobeReplaced = cacheSetToBeWrittenTo[chosenToReplaceWith];
 		if(writePolicy.equalsIgnoreCase("wt") || dataTobeReplaced[1].equals("1")){
-			dirty=true;
+			memoryAcess=true;
 		}
 		cacheSetToBeWrittenTo[chosenToReplaceWith][0]="1";
-		cacheSetToBeWrittenTo[chosenToReplaceWith][1]="0";
+		cacheSetToBeWrittenTo[chosenToReplaceWith][1]=(dirty)?"1":"0";
 		cacheSetToBeWrittenTo[chosenToReplaceWith][2]=splitAddress(address).get("tag");
 		cacheSetToBeWrittenTo[chosenToReplaceWith][3]=data;
-		return dirty;
+		return memoryAcess;
 	}
 	public String trimData(String data){
 		return data.substring(0, (int) (Math.pow(2, offsetBits)*8));
