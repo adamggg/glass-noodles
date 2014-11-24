@@ -5,9 +5,10 @@ public class Memory {
 	int InstructionsBaseAddress;
 	int memoryAccessTime;
 	
-	public Memory(String [] memory, int insBaseAddress) {
+	public Memory(String [] memory, int insBaseAddress, int memoryAccessTime) {
 		this.memory = memory;
 		this.InstructionsBaseAddress = insBaseAddress;
+		this.memoryAccessTime = memoryAccessTime;
 	}
 	
 	public int getInstructionBaseAddress() {

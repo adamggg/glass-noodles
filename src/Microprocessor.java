@@ -1,4 +1,7 @@
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -11,25 +14,57 @@ public class Microprocessor {
 	int numberOfInstructionsExcuted;
 	int totalNumberOfCyclesSpentForMemory;
 	HashMap<Integer, String> registers;
-	assembler a;
+	Assembler a;
 	
-	public Microprocessor(File file) {
-		this.a = new assembler(file);
+	public Microprocessor(File confFile, File assemblerFile) throws IOException {
+		this.dCacheLevels = new ArrayList<Cache>();
+		this.iCacheLevels = new ArrayList<Cache>();
+		this.a = new Assembler(assemblerFile);
 		int baseAddress = a.getBaseAddress();
 		String [] memory = a.getMemoryArray();
-		this.memory = new Memory(memory, baseAddress);
+		BufferedReader configFile = new BufferedReader(new FileReader(confFile));
+		configFile.readLine();
+		int memoryAccessTime = Integer.parseInt(configFile.readLine());
+		this.memory = new Memory(memory, baseAddress, memoryAccessTime);
 		
 		this.pc = this.memory.getInstructionBaseAddress();
 		this.numberOfInstructionsExcuted = 0;
 		this.totalNumberOfCyclesSpentForMemory = 0;
 		
 		this.registers = new HashMap<Integer, String>();
-		registers.put(0, "0000000000000000");
-		for (int i = 1; i < 8; i++) {
-			registers.put(i, "");
+
+		for (int i = 0; i < 8; i++) {
+			registers.put(i, "0000000000000000");
 		}
 		
 		//cache part
+		
+		int level = 0;
+		int s, l, m, cacheAccessTime;
+		String writePolicy;
+		while(configFile.ready()) {
+			//D-Cache
+			configFile.readLine();
+			s = Integer.parseInt(configFile.readLine());
+			l = Integer.parseInt(configFile.readLine());
+			m = Integer.parseInt(configFile.readLine());
+			writePolicy = configFile.readLine();
+			cacheAccessTime = Integer.parseInt(configFile.readLine());
+			dCacheLevels.add(level, new Cache(s, l, m, writePolicy, cacheAccessTime));
+			
+			//I-Cache
+			configFile.readLine();
+			s = Integer.parseInt(configFile.readLine());
+			l = Integer.parseInt(configFile.readLine());
+			m = Integer.parseInt(configFile.readLine());
+			writePolicy = configFile.readLine();
+			cacheAccessTime = Integer.parseInt(configFile.readLine());
+			iCacheLevels.add(level, new Cache(s, l, m, writePolicy, cacheAccessTime));
+			
+			configFile.readLine();
+			level++;
+		}
+		configFile.close();
 		
 	}
 	
@@ -42,14 +77,15 @@ public class Microprocessor {
 			totalNumberOfCyclesSpentForMemory += cacheLevels.get(i).getCacheAccessTime();
 			data = cacheLevels.get(i).readCache(address);			
 			offset = cacheLevels.get(i).splitAddress(address).get("offset");
-			String [] dataBytes = new String[data.length()/8]; 
+			//String [] dataBytes = new String[data.length()/8]; 
 			if(data != null){
+				String [] dataBytes = new String[data.length()/8];
 				writeCacheRecursively(address, i-1, iCacheOrDCache,dataToBeStored);
 
 				if (offset.length() == 1){
 					return data;
 				}
-				else {
+				else { 
 					int wordNumber = Integer.parseInt(offset.substring(0, offset.length()-1), 2);
 					for(int k=0; k<data.length()/8; k++) {
 						dataBytes [k] = data.substring(k*8, (k+1)*8);
@@ -60,7 +96,7 @@ public class Microprocessor {
 		}
 		
 		totalNumberOfCyclesSpentForMemory += memory.getMemoryAccessTime();
-		int wordNumber = Integer.parseInt(offset.substring(0, offset.length()-1), 2);
+		int wordNumber = (offset.length()==1)?0:Integer.parseInt(offset.substring(0, offset.length()-1), 2);
 		String [] block = memory.read(address, cacheLevels.get(i-1));
 		writeCacheRecursively(address, i-1, iCacheOrDCache,dataToBeStored);
 		return block[wordNumber]+block[wordNumber+1];
@@ -69,11 +105,16 @@ public class Microprocessor {
 	public void writeCacheRecursively(String address ,int index,boolean iCacheOrDCache ,
 			String dataToBeStored){
 		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
-		for(int i = index ; i >= 0; i--){
+		if(!dataToBeStored.equalsIgnoreCase("")&& index<cacheLevels.size()-1){
+			index++;
+		}
+		for(int i = index ;i >= 0; i--){
 			String [] dataArray =memory.read(address, cacheLevels.get(i));
 			String data="";
 			boolean dirty=false;
-			int wordNumber = Integer.parseInt(cacheLevels.get(i).splitAddress(address)
+			
+			int wordNumber =(cacheLevels.get(i).splitAddress(address)
+					.get("offset").length()==1)?0:Integer.parseInt(cacheLevels.get(i).splitAddress(address)
 					.get("offset").substring(0,cacheLevels.get(i).splitAddress(address).
 							get("offset").length()-1), 2);
 			for(int j = 0 ;j<dataArray.length;j++)
@@ -107,11 +148,12 @@ public class Microprocessor {
 	}
 	
 	public void execute() {
+		
 		int address = this.pc;
 		String dataAddress = to16BinaryStringValue(address);		
 		String data = readData(dataAddress, true, "");
+	
 		
-		while (data != null) {
 			
 			if(data.startsWith("100")) {
 				//load
@@ -121,9 +163,9 @@ public class Microprocessor {
 				
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
 				
-				if (a.getAddressesMapping().containsKey(memoryAddress)){
-					memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				}
+//				if (a.getAddressesMapping().containsKey(memoryAddress)){
+//					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+//				}
 				
 				String readData = readData(to16BinaryStringValue(memoryAddress), false, "");
 				
@@ -139,9 +181,9 @@ public class Microprocessor {
 				
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
 				
-				if (a.getAddressesMapping().containsKey(memoryAddress)){
-					memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				}
+//				if (a.getAddressesMapping().containsKey(memoryAddress)){
+//					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+//				}
 				
 				readData(to16BinaryStringValue(memoryAddress), false, registers.get(regA));
 				
@@ -183,6 +225,7 @@ public class Microprocessor {
 				if(regA != 0) {
 					registers.put(regA, to16BinaryStringValue(result));
 				}
+				
 			}
 			else if(data.startsWith("0000001")) {
 				//SUB
@@ -249,10 +292,10 @@ public class Microprocessor {
 			}
 			
 			this.pc += 2;
-			address = this.pc;
-			dataAddress = to16BinaryStringValue(address);		
-			data = readData(dataAddress, true, "");
-		}
+//			address = this.pc;
+//			dataAddress = to16BinaryStringValue(address);		
+//			data = readData(dataAddress, true, "");
+		
 	}
 	
 	public static int signedBinaryToDecimal(String signed){
@@ -266,5 +309,17 @@ public class Microprocessor {
 		}
 		
 		return result;
+	}
+	
+	public static void main(String[] args) throws IOException {
+		
+		Microprocessor m = new Microprocessor(new File("config"), new File("prog"));
+		int i = 0;
+		while(i < 4){
+			m.execute();
+			i++;
+		}
+		System.out.println(m.registers.get(2));
+		System.out.println(m.memory.memory[0]+m.memory.memory[1]);
 	}
 }
