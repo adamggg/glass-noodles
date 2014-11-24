@@ -317,6 +317,5 @@ public class Microprocessor {
 			m.execute();
 			i++;
 		}
-		
 	}
 }

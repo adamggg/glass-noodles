@@ -154,6 +154,7 @@ public class Cache {
 	public String trimData(String data){
 		return data.substring(0, (int) (Math.pow(2, offsetBits)*8)); 
 	}
+	
 }
 
 
