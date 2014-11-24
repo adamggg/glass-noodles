@@ -30,6 +30,7 @@ public class Microprocessor {
 		}
 		
 		//cache part
+		
 	}
 	
 	public String readData(String address, boolean iCacheOrDCache, String dataToBeStored){
