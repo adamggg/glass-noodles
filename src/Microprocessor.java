@@ -138,7 +138,6 @@ public class Microprocessor {
 		for (int i = 0; i < 8; i++) {
 			registerStatus.put(i, 0);
 		}
-		
 		//End Of New Code
 		
 	}
