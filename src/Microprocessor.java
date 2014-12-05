@@ -25,6 +25,8 @@ public class Microprocessor {
 	int tail;
 	HashMap<String, String []> reservationStations;
 	HashMap<Integer, Integer> registerStatus;
+	
+	int numberOfRobEntries;
 	//End Of New Code
 	
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
@@ -83,14 +85,14 @@ public class Microprocessor {
 		this.tail = 1;
 		this.reorderBuffer = new HashMap<Integer, String []>();
 		//Initialization of ROB Array
-		int noOfEntries = 6; //supposed to be taken from the configuration file 
+		numberOfRobEntries = 6; //supposed to be taken from the configuration file 
 		
 		String [] robInitialArray = new String[4];
 		for(int i=0; i<4; i++) {
 			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
 		
-		for(int i = 1; i <= noOfEntries; i++){
+		for(int i = 1; i <= numberOfRobEntries; i++){
 			this.reorderBuffer.put(i, robInitialArray);
 		}
 		
@@ -412,6 +414,25 @@ public class Microprocessor {
 		double [] result = {globalAmatDCache,globalAmatICache};
 		return result;
 		}
+	
+	
+	public void commit() {
+		
+		String[] headRobEntry = reorderBuffer.get(head);
+		
+		if (headRobEntry[3].equalsIgnoreCase("yes")) {
+			if ((headRobEntry[0].equalsIgnoreCase("store")) || headRobEntry[0].equalsIgnoreCase("st")) {
+				
+				int memoryAddress = Integer.parseInt(headRobEntry[1]);
+				readData(to16BinaryStringValue(memoryAddress), false, headRobEntry[2]);
+				
+			}
+			
+			else {
+				
+			}
+		}
+	}
 
 	
 	public static void main(String[] args) throws Exception {
