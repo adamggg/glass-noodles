@@ -417,19 +417,39 @@ public class Microprocessor {
 	
 	public void commit() {
 		
+		/* I'm assuming here that "destination" & "value" in the ROB entry are BINARY STRINGS !!
+		 * where the "destination" is either the binary representation for the register number, 
+		 * or it is the binary memory address in case of store instruction.
+		 */
+		
 		String[] headRobEntry = reorderBuffer.get(head);
 		
-		if (headRobEntry[3].equalsIgnoreCase("yes")) {
+		if (headRobEntry[3].equalsIgnoreCase("yes") || headRobEntry[3].equalsIgnoreCase("y")) {
 			if ((headRobEntry[0].equalsIgnoreCase("store")) || headRobEntry[0].equalsIgnoreCase("st")) {
-				
-				int memoryAddress = Integer.parseInt(headRobEntry[1]);
-				readData(to16BinaryStringValue(memoryAddress), false, headRobEntry[2]);
-				
+				int memoryAddress = Integer.parseInt(headRobEntry[1], 2);
+				readData(to16BinaryStringValue(memoryAddress), false, headRobEntry[2]);	
+			}
+			else {
+				registers.put(Integer.parseInt(headRobEntry[1], 2), headRobEntry[2]);
 			}
 			
-			else {
-				
+			String [] robInitialArray = new String[4];
+			for(int i=0; i<4; i++) {
+				robInitialArray[i] = "$$$$$$$$$$$$$$$$";
+			}	
+			reorderBuffer.put(head, robInitialArray);
+			
+			if (registerStatus.get(Integer.parseInt(headRobEntry[1], 2)) == head ) {
+				registerStatus.put(Integer.parseInt(headRobEntry[1], 2) , 0);
 			}
+			
+			if (head == numberOfRobEntries) {
+				head = 1;
+			}
+			else {
+				head++;
+			}
+			
 		}
 	}
 
