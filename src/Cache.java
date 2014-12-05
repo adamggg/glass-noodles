@@ -124,7 +124,6 @@ public class Cache {
 			}
 		}
 		int i=0;
-		System.out.println(Integer.parseInt(splittedAddress.get("index"),2));
 		for( i = 0;i<cacheSetToBeWrittenTo.length;i++)
 			if(cacheSetToBeWrittenTo[i][2]==null)
 				break;
@@ -157,7 +156,14 @@ public class Cache {
 	public String trimData(String data){
 		return data.substring(0, (int) (Math.pow(2, offsetBits)*8)); 
 	}
-	
+
+	public double getMissPenalty(){
+		return numberOfMisses*1.0/(numberOfMisses+numberOfHits)*1.0;
+	}
+	public double getHitRatio(){
+		return numberOfHits*1.0/(numberOfMisses+numberOfHits)*1.0;
+	}
+
 }
 
 

@@ -4,6 +4,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Scanner;
+
+import com.sun.xml.internal.ws.api.pipe.NextAction;
 
 public class Microprocessor {
 
@@ -24,7 +27,7 @@ public class Microprocessor {
 	HashMap<Integer, Integer> registerStatus;
 	//End Of New Code
 	
-	public Microprocessor(File confFile, File assemblerFile) throws IOException {
+	public Microprocessor(File confFile, File assemblerFile) throws Exception {
 		this.dCacheLevels = new ArrayList<Cache>();
 		this.iCacheLevels = new ArrayList<Cache>();
 		this.a = new Assembler(assemblerFile);
@@ -218,13 +221,11 @@ public class Microprocessor {
 	}
 	
 	public void execute() {
-		
 		int address = this.pc;
 		String dataAddress = to16BinaryStringValue(address);		
 		String data = readData(dataAddress, true, "");
-	
 		
-			
+		while(!data.equalsIgnoreCase("nullnull")){
 			if(data.startsWith("100")) {
 				//load
 				int regA = Integer.parseInt(data.substring(3, 6), 2);
@@ -315,7 +316,7 @@ public class Microprocessor {
 				int regB = Integer.parseInt(data.substring(10, 13), 2);
 				int regC = Integer.parseInt(data.substring(13, 16), 2);
 				
-				int result = ~(Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
+				int result = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
 				
 				if (regA != 0) {
 					registers.put(regA, to16BinaryStringValue(result));
@@ -348,25 +349,36 @@ public class Microprocessor {
 				int regA = Integer.parseInt(data.substring(10, 13), 2);
 				int regB = Integer.parseInt(data.substring(13, 16), 2);
 				
-				this.pc = Integer.parseInt(registers.get(regB), 2);
-				
 				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(this.pc));
+					registers.put(regA, to16BinaryStringValue(this.pc+2));
 				}
+				this.pc = Integer.parseInt(registers.get(regB), 2)-2;
+				
+				
+				
 			}
 			else if(data.startsWith("0110000000000")) {
 				//RET
 				int regA = Integer.parseInt(data.substring(13, 16), 2);
 				
-				this.pc = Integer.parseInt(registers.get(regA), 2);
+				this.pc = Integer.parseInt(registers.get(regA), 2)-2;
 			}
 			
 			this.pc += 2;
-//			address = this.pc;
-//			dataAddress = to16BinaryStringValue(address);		
-//			data = readData(dataAddress, true, "");
-		
-	}
+			numberOfInstructionsExcuted++;
+			address = this.pc;
+			dataAddress = to16BinaryStringValue(address);		
+			data = readData(dataAddress, true, "");
+			for(int i = 0;i<dCacheLevels.size();i++){
+				System.out.println("the hit ratio for d cache of level "+i+" is "+dCacheLevels.get(i).getHitRatio());
+			}
+			for(int i = 0;i<iCacheLevels.size();i++){
+				System.out.println("the hit ratio for i cache of level "+i+" is "+iCacheLevels.get(i).getHitRatio());
+			}
+			System.out.println("the global AMAT for d cache is : "+getGlobalAmat()[0]);
+			System.out.println("the global AMAT for i cache is : "+getGlobalAmat()[1]);
+		}
+		}
 	
 	public static int signedBinaryToDecimal(String signed){
 		int result = 0;		
@@ -380,16 +392,48 @@ public class Microprocessor {
 		
 		return result;
 	}
-	
-	public static void main(String[] args) throws IOException {
-		
-		Microprocessor m = new Microprocessor(new File("config"), new File("prog"));
-		int i = 0;
-		while(i < 4){
-			m.execute();
-			i++;
+	public double[] getGlobalAmat(){
+		double globalAmatICache=iCacheLevels.get(0).getCacheAccessTime();
+		double globalAmatDCache=dCacheLevels.get(0).getCacheAccessTime();
+		for(int i =1;i<iCacheLevels.size();i++){
+			double hitRatio = iCacheLevels.get(i-1).getMissPenalty();
+			double missPen = iCacheLevels.get(i).getCacheAccessTime();
+			if(i==iCacheLevels.size()-1)
+				missPen = memory.getMemoryAccessTime();
+			globalAmatICache+=hitRatio*missPen;
 		}
-		System.out.println(m.registers.get(2));
-		System.out.println(m.memory.memory[0]+m.memory.memory[1]);
+		for(int i =1;i<dCacheLevels.size();i++){
+			double hitRatio = dCacheLevels.get(i-1).getMissPenalty();
+			double missPen = dCacheLevels.get(i).getCacheAccessTime();
+			if(i==dCacheLevels.size()-1)
+				missPen = memory.getMemoryAccessTime();
+			globalAmatDCache+=hitRatio*missPen;
+		}
+		double [] result = {globalAmatDCache,globalAmatICache};
+		return result;
+		}
+
+	
+	public static void main(String[] args) throws Exception {
+		Scanner sc = new Scanner(System.in);
+		System.out.println("Please enter the directory for your file , your file should look like this :-" +"\n"+"\n"
+				+"CODE"+"\n"+"Base Address  (write the base address for your program and remove the 0x ; just write the value)"
+				+"\n"+"first program instruction"+"\n"+"second program instruction"+"\n"+"third program instruction"+"\n"
+				+"....."+"\n"+".....  (the instruction should look like this : instName operand1,operand2,... )"+"\n"
+				+"DATA"+"\n"+"value1,address1"+"\n"+"value2,address2"+"\n"+"value3,address3"+"\n"+"....."+"\n"+".....  "
+				+"(the data address should also be writtin in hexamdecimal with no 0x or H ; just the value)"+"\n"+"\n"+
+				"Some guidelines to follow :"+"\n"+"1)No additional/missing spaces if not specified in the above format are allowed ."
+				+"\n"+"2)No additional/missing semicollons are allowed ."+"\n"+"3)Semicollon should be inserted in between two operands ."+
+				"\n"+"4)No empty lines are allowed within the text or after it which means that the text file should start with the word "+
+				"\"CODE\""+"\n"+"  and ends with the last data value ."+"\n"+"5)The word \"CODE\" comes before your program code at the "
+				+"very first line of the file" +"\n"+"  and the word \"DATA\" comes before the data separting between the code and the data lines."
+				+"\n"+"**ANY TEXT FILE VIOLATING ONE OF THE ABOVE CONDITIONS WILL NOT BE ACCEPTED :)");
+		System.out.println("enter the program file path: ");
+		String prog = sc.nextLine();
+		System.out.println("enter the config file path: ");
+		String config = sc.nextLine();
+		Microprocessor m = new Microprocessor(new File(config), new File(prog));
+		sc.close();
+		m.execute();
 	}
 }

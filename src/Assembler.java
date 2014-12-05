@@ -18,7 +18,7 @@ public class Assembler {
 
 	}
 
-	public Assembler(File f) throws IOException {
+	public Assembler(File f) throws Exception {
 		
 		BufferedReader b = new BufferedReader(new FileReader(f));
 		String l = b.readLine();
@@ -29,6 +29,7 @@ public class Assembler {
 		if(l.equalsIgnoreCase("CODE")){
 			
 			String a = b.readLine();
+			a = a.substring(2, a.length());
 			startAddress = Integer.parseInt(a , 16);
 			int address = startAddress;
 			String data = b.readLine();
@@ -58,14 +59,28 @@ public class Assembler {
 			if(data.equalsIgnoreCase("DATA")){
 				
 				
-				
+				int val;
+				int valAddress;
 				while(b.ready()){
 					data = b.readLine();
 					String[] d = data.split(",");
 					String s = d[0];
 					String s1 = d[1];
-					int val = Integer.parseInt(s);
-					int valAddress = Integer.parseInt(s1 , 16);
+					
+					if(s.length()>1 && s.charAt(1)=='x'){
+						s = s.substring(2, s.length());
+						val = Integer.parseInt(s , 16);
+					}
+					else{
+						val = Integer.parseInt(s);
+					}
+					
+				
+					s1 = s1.substring(2, s1.length());
+					valAddress = Integer.parseInt(s1 , 16);
+					if(valAddress>=startAddress && valAddress<= address-1){
+						throw new Exception("the address "+d[1]+" you are trying to write to is a READONLY address in memeory!!");
+					}
 					String binVal = signExtend(val, 16, 's');
 					String Val1 = "";
 					String Val2 = "";
@@ -243,7 +258,7 @@ public class Assembler {
 			}
 			else{
 				
-				bNum = bNum.substring(25, 32);
+				bNum = bNum.substring((32-n), 32);
 			}
 		}
 		else{
@@ -271,7 +286,7 @@ public class Assembler {
 	}*/
 	
 	
-	public static void main(String...args) throws IOException {
+	public static void main(String...args) throws Exception {
 		
 		
 		Scanner sc = new Scanner(System.in);
@@ -290,6 +305,8 @@ public class Assembler {
 		String f = sc.nextLine();
 		File file = new File(f);
 		Assembler a = new Assembler(file);
+		for(int i = 0 ; i<=120 ; i++)
+			System.out.println(a.getMemoryArray()[i]);
 		
 		/*String x = "reg1";
 		
@@ -355,9 +372,26 @@ public class Assembler {
 		}
 		System.out.println("hello"+a.getMemoryArray()[100]);
 		System.out.println("hello"+a.getBaseAddress());
-		*/
 		
+				String x = "0x0000000A";
+		if(x.charAt(1)=='x'){
+			x = x.substring(2, x.length());
+			System.out.println(x);
+			System.out.println(Integer.parseInt(x , 16));
+		}
+		else
+			System.out.println("no");
+	
+
 		
+		File x = new File("file3.txt");
+		Assembler y = new Assembler(x);
+		for(int i = 0 ; i<=120 ; i++){
+		
+			System.out.println(y.getMemoryArray()[i]);
+			
+		}	*/
+
 
 		
 	}
