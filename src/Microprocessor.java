@@ -16,6 +16,14 @@ public class Microprocessor {
 	HashMap<Integer, String> registers;
 	Assembler a;
 	
+	//Start Of New Code
+	HashMap<Integer, String []> reorderBuffer;
+	int head;
+	int tail;
+	HashMap<String, String []> reservationStations;
+	HashMap<Integer, Integer> registerStatus;
+	//End Of New Code
+	
 	public Microprocessor(File confFile, File assemblerFile) throws IOException {
 		this.dCacheLevels = new ArrayList<Cache>();
 		this.iCacheLevels = new ArrayList<Cache>();
@@ -65,6 +73,68 @@ public class Microprocessor {
 			level++;
 		}
 		configFile.close();
+		
+		//Start Of New Code
+		//ROB
+		this.head = 1;
+		this.tail = 1;
+		this.reorderBuffer = new HashMap<Integer, String []>();
+		//Initialization of ROB Array
+		int noOfEntries = 6; //supposed to be taken from the configuration file 
+		
+		String [] robInitialArray = new String[4];
+		for(int i=0; i<4; i++) {
+			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
+		}
+		
+		for(int i = 1; i <= noOfEntries; i++){
+			this.reorderBuffer.put(i, robInitialArray);
+		}
+		
+		//Reservation Stations
+		this.reservationStations = new HashMap<String, String []>();
+		//Initialization of RS Array
+		String [] rsInitialArray = new String[8];
+		for(int i=0; i<8; i++) {
+			rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
+		}
+		
+		//Supposed to be taken from the configuration file
+		int loadRs = 2;						
+		int storeRs = 2;
+		int integerAddSubRs = 2;
+		int doublePrecisionAddSubRs = 2;
+		int multDivRs = 2;
+		
+		String rsName = "";
+		for(int j = 1; j<=loadRs; j++) {
+			rsName = rsName + "Load" + j;
+			reservationStations.put(rsName, rsInitialArray);
+		}
+		for(int j = 1; j<=storeRs; j++) {
+			rsName = rsName + "Store" + j;
+			reservationStations.put(rsName, rsInitialArray);
+		}
+		for(int j = 1; j<=integerAddSubRs; j++) {
+			rsName = rsName + "Add" + j;
+			reservationStations.put(rsName, rsInitialArray);
+		}
+		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
+			rsName = rsName + "Addd" + j;
+			reservationStations.put(rsName, rsInitialArray);
+		}
+		for(int j = 1; j<=multDivRs; j++) {
+			rsName = rsName + "Multd" + j;
+			reservationStations.put(rsName, rsInitialArray);
+		}
+		
+		//Register Status
+		this.registerStatus = new HashMap<Integer, Integer>();
+		for (int i = 0; i < 8; i++) {
+			registerStatus.put(i, 0);
+		}
+		
+		//End Of New Code
 		
 	}
 	
