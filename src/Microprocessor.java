@@ -449,7 +449,6 @@ public class Microprocessor {
 			else {
 				head++;
 			}
-			
 		}
 	}
 
