@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Set;
 
 import com.sun.xml.internal.ws.api.pipe.NextAction;
 
@@ -31,13 +32,13 @@ public class Microprocessor {
 	HashMap<Integer ,Integer> branchPrediction;//keep track of branch instructions misprediction
 	int instToFetchAddress;
 	int instNumber = 1; //needed to keep track of order of instructions in the given program 
-	int loadRs;						
-	int storeRs;
-	int integerAddSubRs;
-	int doublePrecisionAddSubRs;
-	int multDivRs;
+	int loadRs = 0;
+	int storeRs = 0;
+	int integerAddSubRs = 0;
+	int doublePrecisionAddSubRs = 0;
+	int multDivRs = 0;
 	int numberOfRobEntries;
-	
+	HashMap<Integer, String []> writeBuffer;
 	//End Of New Code
 	
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
@@ -150,6 +151,10 @@ public class Microprocessor {
 		for (int i = 0; i < 8; i++) {
 			registerStatus.put(i, 0);
 		}
+		
+		//WriteBuffer
+		this.writeBuffer = new HashMap<Integer, String []>();
+		
 		//End Of New Code
 		
 	}
@@ -304,15 +309,122 @@ public class Microprocessor {
 			}
 		}
 	}
-	public void fetch(){
+	
+	public void writeToAwaitingUnits(String result, String robEntryNumber) {
+		String rsName = "";
+		String [] rsEntry;
 		
+		for(int j = 1; j<=loadRs; j++) {
+			rsName = rsName + "Load" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
 		
+		for(int j = 1; j<=storeRs; j++) {
+			rsName = rsName + "Store" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=integerAddSubRs; j++) {
+			rsName = rsName + "Add" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
+			rsName = rsName + "Addd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=multDivRs; j++) {
+			rsName = rsName + "Multd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+	}
+	
+	public void write(String executionResult, String rsName) {
+		String [] rsEntry = reservationStations.get(rsName);
+		String robEntryNumber = rsEntry[6];
+		String [] robEntry = reorderBuffer.get(Integer.parseInt(robEntryNumber, 2));
+		
+		//Part el store dah msh waska feh !!!
+		if(rsEntry[1].equalsIgnoreCase("store") || rsEntry[1].equalsIgnoreCase("st")) {
+			if(rsEntry[5].equalsIgnoreCase("0000000000000000")) {
+				//In the issue stage Qj lazem yb2a feh zero bs 16 bits
+				robEntry[2] = rsEntry[3];
+				robEntry[3] = "yes";
+				reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+			}
+		}
+		else {
+			writeToAwaitingUnits(executionResult, robEntryNumber);
+		
+			robEntry[2] = executionResult;
+			robEntry[3] = "yes";
+			reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+		}
+		
+		for(int i=0; i<rsEntry.length; i++) {
+			rsEntry[i] = "$$$$$$$$$$$$$$$$";
+		}
+		
+		reservationStations.put(rsName, rsEntry);
+		
+	}
+	
+	public void fetch() {
 		instBuffer = new String[100]; //size supposed to be read from configuration file
-		
 		
 		int j = 0;
 		while(instToFetchAddress<a.getEndAddress() && j<instBuffer.length){
-			
 			//each two cells in memory is an instruction 
 			instBuffer[j] = a.getMemoryArray()[instToFetchAddress]+a.getMemoryArray()[instToFetchAddress+1];
 			instArrayBinary.put(instNumber++, instBuffer[j]);
@@ -321,12 +433,11 @@ public class Microprocessor {
 		}
 		
 	}
+	
 	public void execute() {
 		
 		String instToExecute;
 		String[] inner;
-		
-		
 		
 		//Load instructions
 		for(int a = 1 ; a<=loadRs ; a++ ){
@@ -342,6 +453,7 @@ public class Microprocessor {
 				String result = readData(to16BinaryStringValue(memoryAddress), false, "");
 			}
 		}
+		
 		//Store instructions
 		for(int a = 1 ; a<=storeRs ; a++){
 			String x = "Store"+a;
@@ -357,7 +469,6 @@ public class Microprocessor {
 			}
 			
 		}
-
 
 		//ADD single precision instruction
 		for(int a = 1 ;a<integerAddSubRs ; a++){
@@ -431,6 +542,7 @@ public class Microprocessor {
 				}
 			
 			}
+			
 			//ADD instruction
 			if(instToExecute.startsWith("0000000")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
@@ -442,6 +554,7 @@ public class Microprocessor {
 					String result = to16BinaryStringValue(r);
 				}
 			}
+			
 			//SUB instruction
 			if(instToExecute.startsWith("0000001")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
@@ -452,6 +565,7 @@ public class Microprocessor {
 					String result = to16BinaryStringValue(r);
 				}
 			}
+			
 			//NAND instruction
 			if(instToExecute.startsWith("0000010")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
