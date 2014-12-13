@@ -445,7 +445,7 @@ public class Microprocessor {
 			
 			if (head == numberOfRobEntries) {
 				head = 1;
-			}
+			} 
 			else {
 				head++;
 			}
