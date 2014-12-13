@@ -39,6 +39,7 @@ public class Microprocessor {
 	int multDivRs = 0;
 	int numberOfRobEntries;
 	HashMap<Integer, String []> writeBuffer;
+	int writeWaitingCycles;
 	//End Of New Code
 	
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
@@ -100,8 +101,8 @@ public class Microprocessor {
 		//Initialization of ROB Array
 		numberOfRobEntries = 6; //supposed to be taken from the configuration file 
 		
-		String [] robInitialArray = new String[4];
-		for(int i=0; i<4; i++) {
+		String [] robInitialArray = new String[6];
+		for(int i=0; i<6; i++) {
 			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
 		
@@ -154,6 +155,8 @@ public class Microprocessor {
 		
 		//WriteBuffer
 		this.writeBuffer = new HashMap<Integer, String []>();
+		
+		this.writeWaitingCycles = 1;
 		
 		//End Of New Code
 		
@@ -390,34 +393,76 @@ public class Microprocessor {
 		}
 	}
 	
-	public void write(String executionResult, String rsName) {
+	public void write() {
+		Set<Integer> writeBufferKeys = writeBuffer.keySet();
+		
+		if(!writeBufferKeys.isEmpty()) {
+			Integer insToBeWrittenKey = (Integer)writeBufferKeys.toArray()[0];
+			for(int i=1; i<writeBufferKeys.size(); i++) {
+				int key = (Integer)writeBufferKeys.toArray()[i]; 
+				if(key < insToBeWrittenKey) {
+					insToBeWrittenKey = key;
+				}
+			}
+			
+			for(int i=0; i<writeBufferKeys.size(); i++) {
+				String [] writeBufferValue = writeBuffer.get(writeBufferKeys.toArray()[i]);
+				writeBufferValue[2] = to16BinaryStringValue((Integer.parseInt(writeBufferValue[2],2) + 1));
+				writeBuffer.put((Integer)writeBufferKeys.toArray()[i], writeBufferValue);						
+			}
+			
+			String [] insArrayValues = writeBuffer.get(insToBeWrittenKey);
+			
+			boolean written = write(insArrayValues[0], insArrayValues[1], insArrayValues[2]);
+			
+			if(written) {
+				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 4);
+				writeBufferKeys.remove(insToBeWrittenKey);
+			}
+		}
+
+	}
+	
+	public boolean write(String executionResult, String rsName, String cycle) {
 		String [] rsEntry = reservationStations.get(rsName);
 		String robEntryNumber = rsEntry[6];
 		String [] robEntry = reorderBuffer.get(Integer.parseInt(robEntryNumber, 2));
+		boolean written = false;
 		
 		//Part el store dah msh waska feh !!!
 		if(rsEntry[1].equalsIgnoreCase("store") || rsEntry[1].equalsIgnoreCase("st")) {
 			if(rsEntry[5].equalsIgnoreCase("0000000000000000")) {
 				//In the issue stage Qj lazem yb2a feh zero bs 16 bits
-				robEntry[2] = rsEntry[3];
-				robEntry[3] = "yes";
-				reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+				if(writeWaitingCycles != storeLatency) {
+					writeWaitingCycles++;
+				}
+				else{
+					writeWaitingCycles = 1;
+					robEntry[2] = rsEntry[3];
+					robEntry[3] = "yes";
+					robEntry[5] = cycle;
+					reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+					written = true;
+				}
 			}
 		}
 		else {
 			writeToAwaitingUnits(executionResult, robEntryNumber);
-		
 			robEntry[2] = executionResult;
 			robEntry[3] = "yes";
+			robEntry[5] = cycle;
 			reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+			written = true;
 		}
 		
-		for(int i=0; i<rsEntry.length; i++) {
-			rsEntry[i] = "$$$$$$$$$$$$$$$$";
+		if(written) {
+			for(int i=0; i<rsEntry.length; i++) {
+				rsEntry[i] = "$$$$$$$$$$$$$$$$";
+			}
+			reservationStations.put(rsName, rsEntry);
 		}
 		
-		reservationStations.put(rsName, rsEntry);
-		
+		return written;
 	}
 	
 	public void fetch() {
