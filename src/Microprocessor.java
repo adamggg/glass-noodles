@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Set;
 
 import com.sun.xml.internal.ws.api.pipe.NextAction;
 
@@ -27,6 +28,13 @@ public class Microprocessor {
 	HashMap<Integer, Integer> registerStatus;
 	
 	int numberOfRobEntries;
+	int loadRs = 0;
+	int storeRs = 0;
+	int integerAddSubRs = 0;
+	int doublePrecisionAddSubRs = 0;
+	int multDivRs = 0;
+	
+	HashMap<Integer, String []> writeBuffer;
 	//End Of New Code
 	
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
@@ -105,31 +113,31 @@ public class Microprocessor {
 		}
 		
 		//Supposed to be taken from the configuration file
-		int loadRs = 2;						
-		int storeRs = 2;
-		int integerAddSubRs = 2;
-		int doublePrecisionAddSubRs = 2;
-		int multDivRs = 2;
+		loadRs = 2;						
+		storeRs = 2;
+		integerAddSubRs = 2;
+		doublePrecisionAddSubRs = 2;
+		multDivRs = 2;
 		
 		String rsName = "";
 		for(int j = 1; j<=loadRs; j++) {
-			rsName = rsName + "Load" + j;
+			rsName = "Load" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
 		for(int j = 1; j<=storeRs; j++) {
-			rsName = rsName + "Store" + j;
+			rsName = "Store" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
 		for(int j = 1; j<=integerAddSubRs; j++) {
-			rsName = rsName + "Add" + j;
+			rsName = "Add" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
 		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
-			rsName = rsName + "Addd" + j;
+			rsName = "Addd" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
 		for(int j = 1; j<=multDivRs; j++) {
-			rsName = rsName + "Multd" + j;
+			rsName = "Multd" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
 		
@@ -138,6 +146,10 @@ public class Microprocessor {
 		for (int i = 0; i < 8; i++) {
 			registerStatus.put(i, 0);
 		}
+		
+		//WriteBuffer
+		this.writeBuffer = new HashMap<Integer, String []>();
+		
 		//End Of New Code
 		
 	}
@@ -451,7 +463,123 @@ public class Microprocessor {
 			}
 		}
 	}
-
+	
+	public void writeToAwaitingUnits(String result, String robEntryNumber) {
+		String rsName = "";
+		String [] rsEntry;
+		
+		for(int j = 1; j<=loadRs; j++) {
+			rsName = rsName + "Load" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=storeRs; j++) {
+			rsName = rsName + "Store" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=integerAddSubRs; j++) {
+			rsName = rsName + "Add" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
+			rsName = rsName + "Addd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=multDivRs; j++) {
+			rsName = rsName + "Multd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+	}
+	
+	public void write(String executionResult, String rsName) {
+		String [] rsEntry = reservationStations.get(rsName);
+		String robEntryNumber = rsEntry[6];
+		String [] robEntry = reorderBuffer.get(Integer.parseInt(robEntryNumber, 2));
+		
+		/////////////
+		Set<Integer> wbKeys = writeBuffer.keySet();
+		if(wbKeys.size() == 1) {
+			
+		}
+		/////////////
+		
+		//Part el store dah msh waska feh !!!
+		if(rsEntry[1].equalsIgnoreCase("store") || rsEntry[1].equalsIgnoreCase("st")) {
+			if(rsEntry[5].equalsIgnoreCase("0000000000000000")) {
+				//In the issue stage Qj lazem yb2a feh zero bs 16 bits
+				robEntry[2] = rsEntry[3];
+				robEntry[3] = "yes";
+				reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+			}
+		}
+		else {
+			writeToAwaitingUnits(executionResult, robEntryNumber);
+		
+			robEntry[2] = executionResult;
+			robEntry[3] = "yes";
+			reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+		}
+		
+		for(int i=0; i<rsEntry.length; i++) {
+			rsEntry[i] = "$$$$$$$$$$$$$$$$";
+		}
+		
+		reservationStations.put(rsName, rsEntry);
+		
+	}
 	
 	public static void main(String[] args) throws Exception {
 		Scanner sc = new Scanner(System.in);
