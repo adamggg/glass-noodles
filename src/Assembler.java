@@ -12,6 +12,7 @@ public class Assembler {
 	
 	String[] outArray;
 	int startAddress;
+	int endAddress;
 	//HashMap<Integer, Integer> hashMemory;
 
 	public Assembler() {
@@ -33,6 +34,7 @@ public class Assembler {
 			startAddress = Integer.parseInt(a , 16);
 			int address = startAddress;
 			String data = b.readLine();
+			endAddress = startAddress;
 			
 			while(!data.equalsIgnoreCase("DATA")){
 				
@@ -52,6 +54,7 @@ public class Assembler {
 				}
 				//second byte of the instr 
 				outArray[address++] = i2;
+				endAddress += 2;
 				data = b.readLine();
 				
 			}
@@ -276,6 +279,10 @@ public class Assembler {
 		
 		return startAddress;
 	}
+	protected int getEndAddress(){
+		
+		return endAddress;
+	}
 	protected String[] getMemoryArray(){
 		
 		return outArray;
@@ -307,7 +314,11 @@ public class Assembler {
 		Assembler a = new Assembler(file);
 		for(int i = 0 ; i<=120 ; i++)
 			System.out.println(a.getMemoryArray()[i]);
-		
+		System.out.println(a.getBaseAddress());
+		System.out.println(a.getEndAddress());
+//		String[] k = a.fetch(); 
+//		for(int i = 0 ; i<k.length ; i++)
+//			System.out.println(k[i]);
 		/*String x = "reg1";
 		
 		
