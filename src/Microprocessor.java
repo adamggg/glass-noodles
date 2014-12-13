@@ -37,8 +37,15 @@ public class Microprocessor {
 	int integerAddSubRs = 0;
 	int doublePrecisionAddSubRs = 0;
 	int multDivRs = 0;
-	int numberOfRobEntries;
+	int numberOfRobEntries = 0;
+	int numberOfWays = 0;
+	int instBufferSize = 0;
+	int loadLatency = 0;
+	int storeLatency = 0;
+	int integerAddSubLatency = 0;
+	int doublePrecisionAddSubLatency = 0;
 	HashMap<Integer, String []> writeBuffer;
+	HashMap<Integer, int[]> clockCycles = new HashMap<Integer, int[]>();
 	//End Of New Code
 	
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
@@ -49,6 +56,21 @@ public class Microprocessor {
 		instToFetchAddress = a.getBaseAddress();
 		String [] memory = a.getMemoryArray();
 		BufferedReader configFile = new BufferedReader(new FileReader(confFile));
+		configFile.readLine();
+		
+		this.numberOfWays = Integer.parseInt(configFile.readLine());
+		this.instBufferSize = Integer.parseInt(configFile.readLine());
+		this.numberOfRobEntries = Integer.parseInt(configFile.readLine());
+		this.loadRs = Integer.parseInt(configFile.readLine());
+		this.storeRs = Integer.parseInt(configFile.readLine());
+		this.integerAddSubRs = Integer.parseInt(configFile.readLine());
+		this.doublePrecisionAddSubRs = Integer.parseInt(configFile.readLine());
+		this.multDivRs = Integer.parseInt(configFile.readLine());
+		this.loadLatency = Integer.parseInt(configFile.readLine());
+		this.storeLatency = Integer.parseInt(configFile.readLine());
+		this.integerAddSubLatency = Integer.parseInt(configFile.readLine());
+		this.doublePrecisionAddSubLatency = Integer.parseInt(configFile.readLine());
+		
 		configFile.readLine();
 		int memoryAccessTime = Integer.parseInt(configFile.readLine());
 		this.memory = new Memory(memory, baseAddress, memoryAccessTime);
@@ -98,7 +120,6 @@ public class Microprocessor {
 		this.tail = 1;
 		this.reorderBuffer = new HashMap<Integer, String []>();
 		//Initialization of ROB Array
-		numberOfRobEntries = 6; //supposed to be taken from the configuration file 
 		
 		String [] robInitialArray = new String[4];
 		for(int i=0; i<4; i++) {
@@ -117,12 +138,6 @@ public class Microprocessor {
 			rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
 		
-		//Supposed to be taken from the configuration file
-		loadRs = 2;						
-		storeRs = 2;
-		integerAddSubRs = 2;
-		doublePrecisionAddSubRs = 2;
-		multDivRs = 2;
 		
 		String rsName = "";
 		for(int j = 1; j<=loadRs; j++) {
@@ -154,6 +169,9 @@ public class Microprocessor {
 		
 		//WriteBuffer
 		this.writeBuffer = new HashMap<Integer, String []>();
+		
+		//InstBuffer
+		this.instBuffer = new String[this.instBufferSize];
 		
 		//End Of New Code
 		
@@ -280,19 +298,33 @@ public class Microprocessor {
 		 * or it is the binary memory address in case of store instruction.
 		 */
 		
+		for (int i = 0; i < numberOfRobEntries; i++) {
+			String[] currentRobEntry = new String[6];
+			currentRobEntry = reorderBuffer.get(i);
+			if(!currentRobEntry[5].equalsIgnoreCase("$$$$$$$$$$$$$$$$")) {
+				int updatedClockCycle = Integer.parseInt(currentRobEntry[5], 2) + 1;
+				currentRobEntry[5] = to16BinaryStringValue(updatedClockCycle);
+				reorderBuffer.put(i, currentRobEntry);
+			}
+		}
+		
 		String[] headRobEntry = reorderBuffer.get(head);
 		
 		if (headRobEntry[3].equalsIgnoreCase("yes") || headRobEntry[3].equalsIgnoreCase("y")) {
+			int instructionNumber = Integer.parseInt(headRobEntry[4], 2); //Walid mafrood ye7ot el instruction number in binary
+			int clockCycle = Integer.parseInt(headRobEntry[5], 2);
 			if ((headRobEntry[0].equalsIgnoreCase("store")) || headRobEntry[0].equalsIgnoreCase("st")) {
 				int memoryAddress = Integer.parseInt(headRobEntry[1], 2);
 				readData(to16BinaryStringValue(memoryAddress), false, headRobEntry[2]);	
+				updateClockCycle(instructionNumber, clockCycle, 5);
 			}
 			else {
 				registers.put(Integer.parseInt(headRobEntry[1], 2), headRobEntry[2]);
+				updateClockCycle(instructionNumber, clockCycle, 5);
 			}
 			
-			String [] robInitialArray = new String[4];
-			for(int i=0; i<4; i++) {
+			String [] robInitialArray = new String[6];
+			for(int i=0; i<6; i++) {
 				robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 			}	
 			reorderBuffer.put(head, robInitialArray);
@@ -308,6 +340,13 @@ public class Microprocessor {
 				head++;
 			}
 		}
+	}
+	
+	public void updateClockCycle (int instructionNumber, int clockCycle, int type) {
+		int[] instructionClockCycles = new int [5];
+		instructionClockCycles = clockCycles.get(instructionNumber);
+		instructionClockCycles[type] = clockCycle;
+		clockCycles.put(instructionNumber, instructionClockCycles);
 	}
 	
 	public void writeToAwaitingUnits(String result, String robEntryNumber) {
