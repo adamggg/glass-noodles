@@ -28,8 +28,9 @@ public class Microprocessor {
 	String[] instBuffer ;
 	//HashMap<Integer ,Instruction > instArray; //array containing instructions with the needed specifications in the given program 
 	HashMap<Integer ,String> instArrayBinary;//array containing instructions in program order
-	HashMap<Integer ,Integer> branchPrediction;//keep track of branch instructions misprediction
+	HashMap<Integer ,Boolean> branchPrediction;//keep track of branch instructions misprediction
 	int instToFetchAddress;
+	boolean unconditionalJMP = false;
 	int instNumber = 1; //needed to keep track of order of instructions in the given program 
 	int loadRs;						
 	int storeRs;
@@ -309,17 +310,34 @@ public class Microprocessor {
 		
 		instBuffer = new String[100]; //size supposed to be read from configuration file
 		
-		
-		int j = 0;
-		while(instToFetchAddress<a.getEndAddress() && j<instBuffer.length){
-			
-			//each two cells in memory is an instruction 
-			instBuffer[j] = a.getMemoryArray()[instToFetchAddress]+a.getMemoryArray()[instToFetchAddress+1];
-			instArrayBinary.put(instNumber++, instBuffer[j]);
-			instToFetchAddress += 2;
-			j++;
-		}
-		
+		if(unconditionalJMP == false){
+			int j = 0;
+			while(instToFetchAddress<a.getEndAddress() && j<instBuffer.length){
+				
+				//each two cells in memory is an instruction 
+				instBuffer[j] = readData(to16BinaryStringValue(instToFetchAddress), true, "");
+				instArrayBinary.put(instNumber++, instBuffer[j]);
+				if(instBuffer[j].startsWith("110")){
+					//BEQ instruction
+					if((signedBinaryToDecimal(instBuffer[j].substring(9, 16)))<0){
+						//prediction : Taken
+						instToFetchAddress = Integer.parseInt((instBuffer[j]) , 2)+ signedBinaryToDecimal(instBuffer[j].substring(9, 16));
+					}
+					else //prediction : not taken
+						instToFetchAddress += 2;
+						
+				}
+				else if(instBuffer[j].startsWith("0100000000") || instBuffer[j].startsWith("001000") ||instBuffer[j].startsWith("0110000000000")){
+					// JALR or RET or JMP insructions always assumed to be taken 
+					unconditionalJMP = true;
+					
+				}
+				else
+					instToFetchAddress += 2; 
+				
+				j++;
+			}
+		}	
 	}
 	public void execute() {
 		
@@ -333,7 +351,7 @@ public class Microprocessor {
 			String x = "Load"+a;
 			inner = reservationStations.get(x);
 			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
-				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8]));
+				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 				String immediateValue = instToExecute.substring(9, 16);
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
@@ -347,7 +365,7 @@ public class Microprocessor {
 			String x = "Store"+a;
 			inner = reservationStations.get(x);
 			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
-				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8]));
+				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 				String immediateValue = instToExecute.substring(9, 16);
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
@@ -363,27 +381,36 @@ public class Microprocessor {
 		for(int a = 1 ;a<integerAddSubRs ; a++){
 			String x = "Add"+a;
 			inner = reservationStations.get(x);
-			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8]));
+			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 			
 			//JALR (to be continued..)
 			if(instToExecute.startsWith("0100000000")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+					//return address to be written in destination (regA)
+					String result = to16BinaryStringValue((Integer.parseInt(instToExecute , 2)+2)); 
+					//instruction address to jump to (regB)
 					int regB = Integer.parseInt(instToExecute.substring(13, 16), 2);
-					
+					instToFetchAddress = Integer.parseInt((registers.get(regB)),2);
+					unconditionalJMP = false;
 				}	
 			}
 			//RET (to be continued..)
 			if(instToExecute.startsWith("0110000000000")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+					// intruction address to return to
 					int regA = Integer.parseInt(instToExecute.substring(13, 16), 2);
+					instToFetchAddress = Integer.parseInt((registers.get(regA)),2);
+					unconditionalJMP = false;
 				}
 			}
 			//JMP (to be continued..)
 			if(instToExecute.startsWith("001000")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+					//instruction address to jump to
 					int regA = Integer.parseInt(instToExecute.substring(6, 9), 2);
 					String immediateValue = instToExecute.substring(9, 16);
-					String regAValue = registers.get(regA);
+					instToFetchAddress = Integer.parseInt(instToExecute , 2)+ Integer.parseInt((registers.get(regA)),2)+ signedBinaryToDecimal(immediateValue);
+					unconditionalJMP = false ; 
 				}	
 			}	
 			//ADDI
@@ -406,31 +433,40 @@ public class Microprocessor {
 		for(int a = 1 ; a<doublePrecisionAddSubRs ; a++){
 			String x = "Addd"+a;
 			inner = reservationStations.get(x);
-			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8]));
+			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 			
-			//BEQ instruction (to be ccontinued..)
+			//BEQ instruction (to be continued..)
 			if(instToExecute.startsWith("110")){
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
 					int regA = Integer.parseInt(instToExecute.substring(3, 6), 2);
 					int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 					String immediateValue = instToExecute.substring(9, 16);
-					reservationStations.get("x")[7] = immediateValue;
+					reservationStations.get(x)[7] = immediateValue;
 					String regAValue = registers.get(regA);
 					String regBValue = registers.get(regB);
 					
-					if(regAValue.equalsIgnoreCase(regBValue)){
-						branchPrediction.put(Integer.parseInt(inner[8]), 0);
+					if(signedBinaryToDecimal(immediateValue)<0){
+						//branch prediction : Taken
+						if(regAValue.equalsIgnoreCase(regBValue)){
+							//branch is taken
+							branchPrediction.put(Integer.parseInt(inner[8],2), false);
+						}
+						else //misprediction occured
+							branchPrediction.put(Integer.parseInt(inner[8],2), true);
 					}
 					else{
-						// 1 means that a branch misprediction occured
-						branchPrediction.put(Integer.parseInt(inner[8]), 1);
+						//branch prediction : not taken
+						if(!regAValue.equalsIgnoreCase(regBValue)){
+							//branch is not taken
+							branchPrediction.put(Integer.parseInt(inner[8],2), false);
+						}
+						else //misprediction occured
+							branchPrediction.put(Integer.parseInt(inner[8],2), true);
 					}
-					//result is the address to branch to
-					String result = immediateValue+"";
-					
+						
 				}
-			
 			}
+		
 			//ADD instruction
 			if(instToExecute.startsWith("0000000")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
@@ -470,7 +506,7 @@ public class Microprocessor {
 			String x = "Multd"+a;
 			inner = reservationStations.get(x);
 			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
-				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8]));
+				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regA = Integer.parseInt(instToExecute.substring(7, 10), 2 );
 				int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 				int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
@@ -485,7 +521,7 @@ public class Microprocessor {
 //		public void execute() {
 //		int address = this.pc;
 //		String dataAddress = to16BinaryStringValue(address);		
-//		String data = readData(dataAddress, true, "");
+//		String data = Data(dataAddress, true, "");
 //		
 //		while(!data.equalsIgnoreCase("nullnull")){
 //			if(data.startsWith("100")) {
