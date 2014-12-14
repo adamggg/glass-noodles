@@ -62,6 +62,7 @@ public class Microprocessor {
 		
 		this.numberOfWays = Integer.parseInt(configFile.readLine());
 		this.instBufferSize = Integer.parseInt(configFile.readLine());
+		this.instBuffer = new String[instBufferSize];
 		this.numberOfRobEntries = Integer.parseInt(configFile.readLine());
 		this.loadRs = Integer.parseInt(configFile.readLine());
 		this.storeRs = Integer.parseInt(configFile.readLine());
@@ -508,9 +509,6 @@ public class Microprocessor {
 	
 	public void fetch(){
 		
-		
-		instBuffer = new String[100]; //size supposed to be read from configuration file
-		
 		if(unconditionalJMP == false){
 			int j = 0;
 			while(instToFetchAddress<a.getEndAddress() && j<instBuffer.length){
@@ -556,7 +554,7 @@ public class Microprocessor {
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 				String immediateValue = instToExecute.substring(9, 16);
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
-				reservationStations.get(x)[7] = memoryAddress+"";
+				reservationStations.get(x)[7] = to16BinaryStringValue(memoryAddress);
 				//result is the data to be read
 				String result = readData(to16BinaryStringValue(memoryAddress), false, "");
 			}
@@ -570,9 +568,9 @@ public class Microprocessor {
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 				String immediateValue = instToExecute.substring(9, 16);
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
-				reservationStations.get(x)[7] = memoryAddress+"";
+				reservationStations.get(x)[7] = to16BinaryStringValue(memoryAddress);
 				//result is the memory address to write to 
-				String result = memoryAddress+""; 
+				
 			}
 			
 		}
@@ -617,12 +615,11 @@ public class Microprocessor {
 			//ADDI
 			if(instToExecute.startsWith("111")){
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
-					int regA = Integer.parseInt(instToExecute.substring(3, 6), 2);
+					
 					int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 					int immediateValue = signedBinaryToDecimal(instToExecute.substring(9, 16));
-					
 					int r = Integer.parseInt(registers.get(regB), 2) + immediateValue;
-					//result is the value to be stored in the destination register
+					//result is the value to be stored in the destination register(regA)
 					String result = to16BinaryStringValue(r);
 				}	
 			}
@@ -642,7 +639,6 @@ public class Microprocessor {
 					int regA = Integer.parseInt(instToExecute.substring(3, 6), 2);
 					int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 					String immediateValue = instToExecute.substring(9, 16);
-					reservationStations.get(x)[7] = immediateValue;
 					String regAValue = registers.get(regA);
 					String regBValue = registers.get(regB);
 					
@@ -671,31 +667,33 @@ public class Microprocessor {
 			//ADD instruction
 			if(instToExecute.startsWith("0000000")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
-					int regA = Integer.parseInt(instToExecute.substring(7, 10), 2);
+					
 					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
-					
 					int r = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
+					//result to be stored in destination register (regA)
 					String result = to16BinaryStringValue(r);
 				}
 			}
 			//SUB instruction
 			if(instToExecute.startsWith("0000001")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
-					int regA = Integer.parseInt(instToExecute.substring(7, 10), 2);
+					
 					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
 					int r = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
+					//result to be stored in destination register (regA)
 					String result = to16BinaryStringValue(r);
 				}
 			}
 			//NAND instruction
 			if(instToExecute.startsWith("0000010")) {
 				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
-					int regA = Integer.parseInt(instToExecute.substring(7, 10), 2);
+					
 					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
 					int r = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
+					//result to be stored in destination register (regA)
 					String result = to16BinaryStringValue(r);
 				}
 			}
@@ -708,10 +706,11 @@ public class Microprocessor {
 			inner = reservationStations.get(x);
 			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
 				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
-				int regA = Integer.parseInt(instToExecute.substring(7, 10), 2 );
+				
 				int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 				int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
 				int r = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
+				//result to be stored in destination register (regA)
 				String result = to16BinaryStringValue(r);
 			}
 			
