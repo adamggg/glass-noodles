@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Set;
 
 import com.sun.xml.internal.ws.api.pipe.NextAction;
 
@@ -32,13 +33,14 @@ public class Microprocessor {
 	int instToFetchAddress;
 	boolean unconditionalJMP = false;
 	int instNumber = 1; //needed to keep track of order of instructions in the given program 
-	int loadRs;						
-	int storeRs;
-	int integerAddSubRs;
-	int doublePrecisionAddSubRs;
-	int multDivRs;
+	int loadRs = 0;
+	int storeRs = 0;
+	int integerAddSubRs = 0;
+	int doublePrecisionAddSubRs = 0;
+	int multDivRs = 0;
 	int numberOfRobEntries;
-	
+	HashMap<Integer, String []> writeBuffer;
+	int writeWaitingCycles;
 	//End Of New Code
 	
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
@@ -100,8 +102,8 @@ public class Microprocessor {
 		//Initialization of ROB Array
 		numberOfRobEntries = 6; //supposed to be taken from the configuration file 
 		
-		String [] robInitialArray = new String[4];
-		for(int i=0; i<4; i++) {
+		String [] robInitialArray = new String[6];
+		for(int i=0; i<6; i++) {
 			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
 		
@@ -151,6 +153,12 @@ public class Microprocessor {
 		for (int i = 0; i < 8; i++) {
 			registerStatus.put(i, 0);
 		}
+		
+		//WriteBuffer
+		this.writeBuffer = new HashMap<Integer, String []>();
+		
+		this.writeWaitingCycles = 1;
+		
 		//End Of New Code
 		
 	}
@@ -305,6 +313,159 @@ public class Microprocessor {
 			}
 		}
 	}
+	
+	public void writeToAwaitingUnits(String result, String robEntryNumber) {
+		String rsName = "";
+		String [] rsEntry;
+		
+		for(int j = 1; j<=loadRs; j++) {
+			rsName = rsName + "Load" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=storeRs; j++) {
+			rsName = rsName + "Store" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=integerAddSubRs; j++) {
+			rsName = rsName + "Add" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
+			rsName = rsName + "Addd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=multDivRs; j++) {
+			rsName = rsName + "Multd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+	}
+	
+	public void write() {
+		Set<Integer> writeBufferKeys = writeBuffer.keySet();
+		
+		if(!writeBufferKeys.isEmpty()) {
+			Integer insToBeWrittenKey = (Integer)writeBufferKeys.toArray()[0];
+			for(int i=1; i<writeBufferKeys.size(); i++) {
+				int key = (Integer)writeBufferKeys.toArray()[i]; 
+				if(key < insToBeWrittenKey) {
+					insToBeWrittenKey = key;
+				}
+			}
+			
+			for(int i=0; i<writeBufferKeys.size(); i++) {
+				String [] writeBufferValue = writeBuffer.get(writeBufferKeys.toArray()[i]);
+				writeBufferValue[2] = to16BinaryStringValue((Integer.parseInt(writeBufferValue[2],2) + 1));
+				writeBuffer.put((Integer)writeBufferKeys.toArray()[i], writeBufferValue);						
+			}
+			
+			String [] insArrayValues = writeBuffer.get(insToBeWrittenKey);
+			
+			boolean written = write(insArrayValues[0], insArrayValues[1], insArrayValues[2]);
+			
+			if(written) {
+				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 4);
+				writeBufferKeys.remove(insToBeWrittenKey);
+			}
+		}
+
+	}
+	
+	public boolean write(String executionResult, String rsName, String cycle) {
+		String [] rsEntry = reservationStations.get(rsName);
+		String robEntryNumber = rsEntry[6];
+		String [] robEntry = reorderBuffer.get(Integer.parseInt(robEntryNumber, 2));
+		boolean written = false;
+		
+		//Part el store dah msh waska feh !!!
+		if(rsEntry[1].equalsIgnoreCase("store") || rsEntry[1].equalsIgnoreCase("st")) {
+			if(rsEntry[5].equalsIgnoreCase("0000000000000000")) {
+				//In the issue stage Qj lazem yb2a feh zero bs 16 bits
+				if(writeWaitingCycles != storeLatency) {
+					writeWaitingCycles++;
+				}
+				else{
+					writeWaitingCycles = 1;
+					robEntry[2] = rsEntry[3];
+					robEntry[3] = "yes";
+					robEntry[5] = cycle;
+					reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+					written = true;
+				}
+			}
+		}
+		else {
+			writeToAwaitingUnits(executionResult, robEntryNumber);
+			robEntry[2] = executionResult;
+			robEntry[3] = "yes";
+			robEntry[5] = cycle;
+			reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+			written = true;
+		}
+		
+		if(written) {
+			for(int i=0; i<rsEntry.length; i++) {
+				rsEntry[i] = "$$$$$$$$$$$$$$$$";
+			}
+			reservationStations.put(rsName, rsEntry);
+		}
+		
+		return written;
+	}
+	
 	public void fetch(){
 		
 		
@@ -516,7 +677,6 @@ public class Microprocessor {
 			
 		}
 	}	
-		
 ///////////////////////////////old execute///////////////////////////////////////////////////////////
 //		public void execute() {
 //		int address = this.pc;
