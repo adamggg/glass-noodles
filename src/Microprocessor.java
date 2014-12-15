@@ -494,7 +494,7 @@ public class Microprocessor {
 			boolean written = write(insArrayValues[0], insArrayValues[1], insArrayValues[2]);
 			
 			if(written) {
-				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 4);
+				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 3);
 				writeBufferKeys.remove(insToBeWrittenKey);
 			}
 		}
@@ -754,13 +754,23 @@ public class Microprocessor {
 	}
 	
 	public void ClockCycle() {
-		fetch();
 		issue();
 		execute();
 		write();
 		commit();
 		
 		programCycles ++;
+	}
+	
+	public void printClockCycleTable() {
+		System.out.println("\t (F)  (I)  (E)  (W)  (C)");
+		for(int i=0; i<clockCycles.size(); i++) {
+			System.out.println("I" + i + "  " + ((clockCycles.get(i)[0]<9)?clockCycles.get(i)[0]+" ":clockCycles.get(i)[0]) +  "  " 
+					+ ((clockCycles.get(i)[1]<9)?clockCycles.get(i)[1]+" ":clockCycles.get(i)[1]) + "  "
+					+ ((clockCycles.get(i)[2]<9)?clockCycles.get(i)[2]+" ":clockCycles.get(i)[2]) + "  " 
+					+ ((clockCycles.get(i)[3]<9)?clockCycles.get(i)[3]+" ":clockCycles.get(i)[3]) + "  " 
+					+ ((clockCycles.get(i)[4]<9)?clockCycles.get(i)[4]+" ":clockCycles.get(i)[4]));
+		}
 	}
 ///////////////////////////////old execute///////////////////////////////////////////////////////////
 //		public void execute() {
