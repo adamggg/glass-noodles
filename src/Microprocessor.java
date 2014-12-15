@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Set;
 
+import sun.security.x509.IssuerAlternativeNameExtension;
+
 import com.sun.xml.internal.ws.api.pipe.NextAction;
 
 public class Microprocessor {
@@ -342,24 +344,42 @@ public class Microprocessor {
 		}
 		
 		String[] headRobEntry = reorderBuffer.get(head);
+		int instructionNumber = Integer.parseInt(headRobEntry[4], 2);
+		int clockCycle = Integer.parseInt(headRobEntry[5], 2);
+		boolean misprediction = false;
+		
+		String [] robInitialArray = new String[6];
+		for(int i=0; i<6; i++) {
+			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
+		}
 		
 		if (headRobEntry[3].equalsIgnoreCase("yes") || headRobEntry[3].equalsIgnoreCase("y")) {
-			int instructionNumber = Integer.parseInt(headRobEntry[4], 2); //Walid mafrood ye7ot el instruction number in binary
-			int clockCycle = Integer.parseInt(headRobEntry[5], 2);
 			if ((headRobEntry[0].equalsIgnoreCase("store")) || headRobEntry[0].equalsIgnoreCase("st")) {
 				int memoryAddress = Integer.parseInt(headRobEntry[1], 2);
 				readData(to16BinaryStringValue(memoryAddress), false, headRobEntry[2]);	
 				updateClockCycle(instructionNumber, clockCycle, 5);
 			}
+			else if (headRobEntry[0].equalsIgnoreCase("branch")) {
+				if (!branchPrediction.get(instructionNumber).equalsIgnoreCase("$$$$$$$$$$$$$$$$")) {
+					misprediction = true;
+					instToFetchAddress = Integer.parseInt(branchPrediction.get(instructionNumber), 2);
+					for (int i = 1; i <= numberOfRobEntries; i++) {
+						reorderBuffer.put(i, robInitialArray);
+					}
+					deleteMispredictedFromRs(headRobEntry[4]);
+				}
+			} 
 			else {
 				registers.put(Integer.parseInt(headRobEntry[1], 2), headRobEntry[2]);
 				updateClockCycle(instructionNumber, clockCycle, 5);
 			}
+
 			
 			String [] robInitialArray = new String[6];
 			for(int i=0; i<6; i++) {
 				robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 			}
+
 			reorderBuffer.put(head, robInitialArray);
 
 			if (registerStatus.get(Integer.parseInt(headRobEntry[1], 2)) == head) {
@@ -372,6 +392,9 @@ public class Microprocessor {
 			else {
 				head++;
 			}
+			if (misprediction) {
+				tail = head;
+			}
 		}
 	}
 	
@@ -380,6 +403,25 @@ public class Microprocessor {
 		instructionClockCycles = clockCycles.get(instructionNumber);
 		instructionClockCycles[type] = clockCycle;
 		clockCycles.put(instructionNumber, instructionClockCycles);
+	}
+	
+	public void deleteMispredictedFromRs (String instructionNumber) {
+		String[] rsEntry = new String[10];
+		Object[] keySet = reservationStations.keySet().toArray();
+		
+		String[] rsInitialArray = new String[10];
+		for(int i=0; i<rsInitialArray.length; i++) {
+			rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
+		}
+		
+		for (int i = 0; i < keySet.length ; i++) {
+			rsEntry = reservationStations.get(keySet[i]);
+			int integerInstructionNumber = Integer.parseInt(instructionNumber, 2);
+			int integerRobInstructionNumber = Integer.parseInt(rsEntry[8], 2);
+			if (integerInstructionNumber <= integerRobInstructionNumber) {
+				reservationStations.put((String) keySet[i], rsInitialArray);
+			}
+		}
 	}
 	
 	public void writeToAwaitingUnits(String result, String robEntryNumber) {
@@ -485,7 +527,7 @@ public class Microprocessor {
 			boolean written = write(insArrayValues[0], insArrayValues[1], insArrayValues[2]);
 			
 			if(written) {
-				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 4);
+				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 3);
 				writeBufferKeys.remove(insToBeWrittenKey);
 			}
 		}
@@ -741,7 +783,27 @@ public class Microprocessor {
 			}
 			
 		}
-	}	
+	}
+	
+	public void ClockCycle() {
+		issue();
+		execute();
+		write();
+		commit();
+		
+		programCycles ++;
+	}
+	
+	public void printClockCycleTable() {
+		System.out.println("\t (F)  (I)  (E)  (W)  (C)");
+		for(int i=0; i<clockCycles.size(); i++) {
+			System.out.println("I" + i + "  " + ((clockCycles.get(i)[0]<9)?clockCycles.get(i)[0]+" ":clockCycles.get(i)[0]) +  "  " 
+					+ ((clockCycles.get(i)[1]<9)?clockCycles.get(i)[1]+" ":clockCycles.get(i)[1]) + "  "
+					+ ((clockCycles.get(i)[2]<9)?clockCycles.get(i)[2]+" ":clockCycles.get(i)[2]) + "  " 
+					+ ((clockCycles.get(i)[3]<9)?clockCycles.get(i)[3]+" ":clockCycles.get(i)[3]) + "  " 
+					+ ((clockCycles.get(i)[4]<9)?clockCycles.get(i)[4]+" ":clockCycles.get(i)[4]));
+		}
+	}
 ///////////////////////////////old execute///////////////////////////////////////////////////////////
 //		public void execute() {
 //		int address = this.pc;
