@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Set;
 
+import sun.security.x509.IssuerAlternativeNameExtension;
+
 import com.sun.xml.internal.ws.api.pipe.NextAction;
 
 public class Microprocessor {
@@ -749,7 +751,17 @@ public class Microprocessor {
 			}
 			
 		}
-	}	
+	}
+	
+	public void ClockCycle() {
+		fetch();
+		issue();
+		execute();
+		write();
+		commit();
+		
+		programCycles ++;
+	}
 ///////////////////////////////old execute///////////////////////////////////////////////////////////
 //		public void execute() {
 //		int address = this.pc;
