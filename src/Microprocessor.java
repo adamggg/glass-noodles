@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Set;
 
 import com.sun.xml.internal.ws.api.pipe.NextAction;
 
@@ -25,22 +26,57 @@ public class Microprocessor {
 	int tail;
 	HashMap<String, String[]> reservationStations;
 	HashMap<Integer, Integer> registerStatus;
-	int numberOfInstructionsToBeIssued;
-	String instructionBuffer[];
-	int numberOfLoads;
-	int numberOfInts;
-	int numberOfMul;
-	int numberOfRobEntries;
-
 	// End Of New Code
+
+	String[] instBuffer ;
+	//HashMap<Integer ,Instruction > instArray; //array containing instructions with the needed specifications in the given program 
+	HashMap<Integer ,String> instArrayBinary;//array containing instructions in program order
+	HashMap<Integer ,Boolean> branchPrediction;//keep track of branch instructions misprediction
+	int instToFetchAddress;
+	boolean unconditionalJMP = false;
+	int instNumber = 1; //needed to keep track of order of instructions in the given program 
+	int loadRs = 0;
+	int storeRs = 0;
+	int integerAddSubRs = 0;
+	int doublePrecisionAddSubRs = 0;
+	int multDivRs = 0;
+	int numberOfRobEntries = 0;
+	int numberOfWays = 0;
+	int instBufferSize = 0;
+	int loadLatency = 0;
+	int storeLatency = 0;
+	int integerAddSubLatency = 0;
+	int doublePrecisionAddSubLatency = 0;
+	HashMap<Integer, String []> writeBuffer;
+	HashMap<Integer, int[]> clockCycles = new HashMap<Integer, int[]>();
+	int writeWaitingCycles;
+	//End Of New Code
+	
 
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
 		this.dCacheLevels = new ArrayList<Cache>();
 		this.iCacheLevels = new ArrayList<Cache>();
 		this.a = new Assembler(assemblerFile);
 		int baseAddress = a.getBaseAddress();
-		String[] memory = a.getMemoryArray();
+		instToFetchAddress = a.getBaseAddress();
+		String [] memory = a.getMemoryArray();
 		BufferedReader configFile = new BufferedReader(new FileReader(confFile));
+		configFile.readLine();
+		
+		this.numberOfWays = Integer.parseInt(configFile.readLine());
+		this.instBufferSize = Integer.parseInt(configFile.readLine());
+		this.instBuffer = new String[instBufferSize];
+		this.numberOfRobEntries = Integer.parseInt(configFile.readLine());
+		this.loadRs = Integer.parseInt(configFile.readLine());
+		this.storeRs = Integer.parseInt(configFile.readLine());
+		this.integerAddSubRs = Integer.parseInt(configFile.readLine());
+		this.doublePrecisionAddSubRs = Integer.parseInt(configFile.readLine());
+		this.multDivRs = Integer.parseInt(configFile.readLine());
+		this.loadLatency = Integer.parseInt(configFile.readLine());
+		this.storeLatency = Integer.parseInt(configFile.readLine());
+		this.integerAddSubLatency = Integer.parseInt(configFile.readLine());
+		this.doublePrecisionAddSubLatency = Integer.parseInt(configFile.readLine());
+		
 		configFile.readLine();
 		int memoryAccessTime = Integer.parseInt(configFile.readLine());
 		this.memory = new Memory(memory, baseAddress, memoryAccessTime);
@@ -90,13 +126,11 @@ public class Microprocessor {
 		// ROB
 		this.head = 1;
 		this.tail = 1;
-		this.reorderBuffer = new HashMap<Integer, String[]>();
-		// Initialization of ROB Array
-		numberOfRobEntries = 6; // supposed to be taken from the configuration
-								// file
-
-		String[] robInitialArray = new String[4];
-		for (int i = 0; i < 4; i++) {
+		this.reorderBuffer = new HashMap<Integer, String []>();
+		//Initialization of ROB Array
+		
+		String [] robInitialArray = new String[6];
+		for(int i=0; i<6; i++) {
 			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
 
@@ -104,40 +138,35 @@ public class Microprocessor {
 			this.reorderBuffer.put(i, robInitialArray);
 		}
 
-		// Reservation Stations
-		this.reservationStations = new HashMap<String, String[]>();
-		// Initialization of RS Array
-		String[] rsInitialArray = new String[8];
-		for (int i = 0; i < 8; i++) {
+		
+		//Reservation Stations
+		this.reservationStations = new HashMap<String, String []>();
+		//Initialization of RS Array
+		String [] rsInitialArray = new String[9];
+		for(int i=0; i<9; i++) {
 			rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
-
-		// Supposed to be taken from the configuration file
-		int loadRs = 2;
-		int storeRs = 2;
-		int integerAddSubRs = 2;
-		int doublePrecisionAddSubRs = 2;
-		int multDivRs = 2;
-
+		
+		
 		String rsName = "";
-		for (int j = 1; j <= loadRs; j++) {
-			rsName = rsName + "Load" + j;
+		for(int j = 1; j<=loadRs; j++) {
+			rsName = "Load" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
-		for (int j = 1; j <= storeRs; j++) {
-			rsName = rsName + "Store" + j;
+		for(int j = 1; j<=storeRs; j++) {
+			rsName = "Store" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
-		for (int j = 1; j <= integerAddSubRs; j++) {
-			rsName = rsName + "Add" + j;
+		for(int j = 1; j<=integerAddSubRs; j++) {
+			rsName = "Add" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
-		for (int j = 1; j <= doublePrecisionAddSubRs; j++) {
-			rsName = rsName + "Addd" + j;
+		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
+			rsName = "Addd" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
-		for (int j = 1; j <= multDivRs; j++) {
-			rsName = rsName + "Multd" + j;
+		for(int j = 1; j<=multDivRs; j++) {
+			rsName = "Multd" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
 
@@ -146,8 +175,20 @@ public class Microprocessor {
 		for (int i = 0; i < 8; i++) {
 			registerStatus.put(i, 0);
 		}
-		// End Of New Code
 
+
+		
+		//WriteBuffer
+		this.writeBuffer = new HashMap<Integer, String []>();
+		
+
+		//InstBuffer
+		this.instBuffer = new String[this.instBufferSize];
+
+		this.writeWaitingCycles = 1;
+		
+		//End Of New Code
+		
 	}
 
 	public String readData(String address, boolean iCacheOrDCache,
@@ -244,175 +285,13 @@ public class Microprocessor {
 		return returnValue;
 	}
 
-	public void execute() {
-		int address = this.pc;
-		String dataAddress = to16BinaryStringValue(address);
-		String data = readData(dataAddress, true, "");
-
-		while (!data.equalsIgnoreCase("nullnull")) {
-			if (data.startsWith("100")) {
-				// load
-				int regA = Integer.parseInt(data.substring(3, 6), 2);
-				int regB = Integer.parseInt(data.substring(6, 9), 2);
-				String immediateValue = data.substring(9, 16);
-
-				int memoryAddress = Integer.parseInt(registers.get(regB), 2)
-						+ signedBinaryToDecimal(immediateValue);
-
-				// if (a.getAddressesMapping().containsKey(memoryAddress)){
-				// memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				// }
-
-				String readData = readData(
-						to16BinaryStringValue(memoryAddress), false, "");
-
-				registers.put(regA, readData);
-
-			} else if (data.startsWith("101")) {
-				// store
-				int regA = Integer.parseInt(data.substring(3, 6), 2);
-				int regB = Integer.parseInt(data.substring(6, 9), 2);
-				String immediateValue = data.substring(9, 16);
-
-				int memoryAddress = Integer.parseInt(registers.get(regB), 2)
-						+ signedBinaryToDecimal(immediateValue);
-
-				// if (a.getAddressesMapping().containsKey(memoryAddress)){
-				// memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				// }
-
-				readData(to16BinaryStringValue(memoryAddress), false,
-						registers.get(regA));
-
-			} else if (data.startsWith("110")) {
-				// BEQ
-				int regA = Integer.parseInt(data.substring(3, 6), 2);
-				int regB = Integer.parseInt(data.substring(6, 9), 2);
-				String immediateValue = data.substring(9, 16);
-
-				String regAValue = registers.get(regA);
-				String regBValue = registers.get(regB);
-
-				if (regAValue.equalsIgnoreCase(regBValue)) {
-					this.pc = this.pc + 2
-							+ signedBinaryToDecimal(immediateValue) - 2;
-				}
-
-			} else if (data.startsWith("111")) {
-				// AddI
-				int regA = Integer.parseInt(data.substring(3, 6), 2);
-				int regB = Integer.parseInt(data.substring(6, 9), 2);
-				int immediateValue = signedBinaryToDecimal(data
-						.substring(9, 16));
-
-				int result = Integer.parseInt(registers.get(regB), 2)
-						+ immediateValue;
-
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
-				}
-			} else if (data.startsWith("0000000")) {
-				// Add
-				int regA = Integer.parseInt(data.substring(7, 10), 2);
-				int regB = Integer.parseInt(data.substring(10, 13), 2);
-				int regC = Integer.parseInt(data.substring(13, 16), 2);
-
-				int result = Integer.parseInt(registers.get(regB), 2)
-						+ Integer.parseInt(registers.get(regC), 2);
-
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
-				}
-
-			} else if (data.startsWith("0000001")) {
-				// SUB
-				int regA = Integer.parseInt(data.substring(7, 10), 2);
-				int regB = Integer.parseInt(data.substring(10, 13), 2);
-				int regC = Integer.parseInt(data.substring(13, 16), 2);
-
-				int result = Integer.parseInt(registers.get(regB), 2)
-						- Integer.parseInt(registers.get(regC), 2);
-
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
-				}
-			} else if (data.startsWith("0000010")) {
-				// NAND
-				int regA = Integer.parseInt(data.substring(7, 10), 2);
-				int regB = Integer.parseInt(data.substring(10, 13), 2);
-				int regC = Integer.parseInt(data.substring(13, 16), 2);
-
-				int result = (Integer.parseInt(registers.get(regB), 2) & Integer
-						.parseInt(registers.get(regC), 2));
-
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
-				}
-			} else if (data.startsWith("0000011")) {
-				// MUL
-				int regA = Integer.parseInt(data.substring(7, 10), 2);
-				int regB = Integer.parseInt(data.substring(10, 13), 2);
-				int regC = Integer.parseInt(data.substring(13, 16), 2);
-
-				int result = Integer.parseInt(registers.get(regB), 2)
-						* Integer.parseInt(registers.get(regC), 2);
-
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
-				}
-			} else if (data.startsWith("001000")) {
-				// JMP
-				int regA = Integer.parseInt(data.substring(6, 9), 2);
-				String immediateValue = data.substring(9, 16);
-
-				String regAValue = registers.get(regA);
-
-				this.pc = this.pc + 2
-						+ Integer.parseInt(registers.get(regA), 2)
-						+ signedBinaryToDecimal(immediateValue) - 2;
-
-			} else if (data.startsWith("0100000000")) {
-				// JALR
-				int regA = Integer.parseInt(data.substring(10, 13), 2);
-				int regB = Integer.parseInt(data.substring(13, 16), 2);
-
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(this.pc + 2));
-				}
-				this.pc = Integer.parseInt(registers.get(regB), 2) - 2;
-
-			} else if (data.startsWith("0110000000000")) {
-				// RET
-				int regA = Integer.parseInt(data.substring(13, 16), 2);
-
-				this.pc = Integer.parseInt(registers.get(regA), 2) - 2;
-			}
-
-			this.pc += 2;
-			numberOfInstructionsExcuted++;
-			address = this.pc;
-			dataAddress = to16BinaryStringValue(address);
-			data = readData(dataAddress, true, "");
-			for (int i = 0; i < dCacheLevels.size(); i++) {
-				System.out.println("the hit ratio for d cache of level " + i
-						+ " is " + dCacheLevels.get(i).getHitRatio());
-			}
-			for (int i = 0; i < iCacheLevels.size(); i++) {
-				System.out.println("the hit ratio for i cache of level " + i
-						+ " is " + iCacheLevels.get(i).getHitRatio());
-			}
-			System.out.println("the global AMAT for d cache is : "
-					+ getGlobalAmat()[0]);
-			System.out.println("the global AMAT for i cache is : "
-					+ getGlobalAmat()[1]);
-		}
-	}
-
-	public static int signedBinaryToDecimal(String signed) {
-		int result = 0;
-		if (signed.startsWith("1")) {
-			signed = signed.replace('0', '2').replace('1', '0')
-					.replace('2', '1');
+	
+	
+	
+	public static int signedBinaryToDecimal(String signed){
+		int result = 0;		
+		if (signed.startsWith("1")){
+			signed = signed.replace('0', '2').replace('1', '0').replace('2', '1');
 			result = 0 - (Integer.parseInt(signed, 2) + 1);
 		} else {
 			result = Integer.parseInt(signed, 2);
@@ -451,22 +330,34 @@ public class Microprocessor {
 		 * address in case of store instruction.
 		 */
 
-		String[] headRobEntry = reorderBuffer.get(head);
-
-		if (headRobEntry[3].equalsIgnoreCase("yes")
-				|| headRobEntry[3].equalsIgnoreCase("y")) {
-			if ((headRobEntry[0].equalsIgnoreCase("store"))
-					|| headRobEntry[0].equalsIgnoreCase("st")) {
-				int memoryAddress = Integer.parseInt(headRobEntry[1], 2);
-				readData(to16BinaryStringValue(memoryAddress), false,
-						headRobEntry[2]);
-			} else {
-				registers.put(Integer.parseInt(headRobEntry[1], 2),
-						headRobEntry[2]);
+		
+		for (int i = 0; i < numberOfRobEntries; i++) {
+			String[] currentRobEntry = new String[6];
+			currentRobEntry = reorderBuffer.get(i);
+			if(!currentRobEntry[5].equalsIgnoreCase("$$$$$$$$$$$$$$$$")) {
+				int updatedClockCycle = Integer.parseInt(currentRobEntry[5], 2) + 1;
+				currentRobEntry[5] = to16BinaryStringValue(updatedClockCycle);
+				reorderBuffer.put(i, currentRobEntry);
 			}
-
-			String[] robInitialArray = new String[4];
-			for (int i = 0; i < 4; i++) {
+		}
+		
+		String[] headRobEntry = reorderBuffer.get(head);
+		
+		if (headRobEntry[3].equalsIgnoreCase("yes") || headRobEntry[3].equalsIgnoreCase("y")) {
+			int instructionNumber = Integer.parseInt(headRobEntry[4], 2); //Walid mafrood ye7ot el instruction number in binary
+			int clockCycle = Integer.parseInt(headRobEntry[5], 2);
+			if ((headRobEntry[0].equalsIgnoreCase("store")) || headRobEntry[0].equalsIgnoreCase("st")) {
+				int memoryAddress = Integer.parseInt(headRobEntry[1], 2);
+				readData(to16BinaryStringValue(memoryAddress), false, headRobEntry[2]);	
+				updateClockCycle(instructionNumber, clockCycle, 5);
+			}
+			else {
+				registers.put(Integer.parseInt(headRobEntry[1], 2), headRobEntry[2]);
+				updateClockCycle(instructionNumber, clockCycle, 5);
+			}
+			
+			String [] robInitialArray = new String[6];
+			for(int i=0; i<6; i++) {
 				robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 			}
 			reorderBuffer.put(head, robInitialArray);
@@ -477,13 +368,542 @@ public class Microprocessor {
 
 			if (head == numberOfRobEntries) {
 				head = 1;
-			} else {
+			} 
+			else {
 				head++;
 			}
-
 		}
 	}
+	
+	public void updateClockCycle (int instructionNumber, int clockCycle, int type) {
+		int[] instructionClockCycles = new int [5];
+		instructionClockCycles = clockCycles.get(instructionNumber);
+		instructionClockCycles[type] = clockCycle;
+		clockCycles.put(instructionNumber, instructionClockCycles);
+	}
+	
+	public void writeToAwaitingUnits(String result, String robEntryNumber) {
+		String rsName = "";
+		String [] rsEntry;
+		
+		for(int j = 1; j<=loadRs; j++) {
+			rsName = rsName + "Load" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=storeRs; j++) {
+			rsName = rsName + "Store" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=integerAddSubRs; j++) {
+			rsName = rsName + "Add" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
+			rsName = rsName + "Addd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+		
+		for(int j = 1; j<=multDivRs; j++) {
+			rsName = rsName + "Multd" + j;
+			rsEntry = reservationStations.get(rsName);
+			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[2] = result;
+				rsEntry[4] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+			if (rsEntry[5].equalsIgnoreCase(robEntryNumber)) {
+				rsEntry[3] = result;
+				rsEntry[5] = "0000000000000000";
+				reservationStations.put(rsName, rsEntry);
+			}
+		}
+	}
+	
+	public void write() {
+		Set<Integer> writeBufferKeys = writeBuffer.keySet();
+		
+		if(!writeBufferKeys.isEmpty()) {
+			Integer insToBeWrittenKey = (Integer)writeBufferKeys.toArray()[0];
+			for(int i=1; i<writeBufferKeys.size(); i++) {
+				int key = (Integer)writeBufferKeys.toArray()[i]; 
+				if(key < insToBeWrittenKey) {
+					insToBeWrittenKey = key;
+				}
+			}
+			
+			for(int i=0; i<writeBufferKeys.size(); i++) {
+				String [] writeBufferValue = writeBuffer.get(writeBufferKeys.toArray()[i]);
+				writeBufferValue[2] = to16BinaryStringValue((Integer.parseInt(writeBufferValue[2],2) + 1));
+				writeBuffer.put((Integer)writeBufferKeys.toArray()[i], writeBufferValue);						
+			}
+			
+			String [] insArrayValues = writeBuffer.get(insToBeWrittenKey);
+			
+			boolean written = write(insArrayValues[0], insArrayValues[1], insArrayValues[2]);
+			
+			if(written) {
+				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 4);
+				writeBufferKeys.remove(insToBeWrittenKey);
+			}
+		}
 
+	}
+	
+	public boolean write(String executionResult, String rsName, String cycle) {
+		String [] rsEntry = reservationStations.get(rsName);
+		String robEntryNumber = rsEntry[6];
+		String [] robEntry = reorderBuffer.get(Integer.parseInt(robEntryNumber, 2));
+		boolean written = false;
+		
+		//Part el store dah msh waska feh !!!
+		if(rsEntry[1].equalsIgnoreCase("store") || rsEntry[1].equalsIgnoreCase("st")) {
+			if(rsEntry[5].equalsIgnoreCase("0000000000000000")) {
+				//In the issue stage Qj lazem yb2a feh zero bs 16 bits
+				if(writeWaitingCycles != storeLatency) {
+					writeWaitingCycles++;
+				}
+				else{
+					writeWaitingCycles = 1;
+					robEntry[2] = rsEntry[3];
+					robEntry[3] = "yes";
+					robEntry[5] = cycle;
+					reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+					written = true;
+				}
+			}
+		}
+		else {
+			writeToAwaitingUnits(executionResult, robEntryNumber);
+			robEntry[2] = executionResult;
+			robEntry[3] = "yes";
+			robEntry[5] = cycle;
+			reorderBuffer.put(Integer.parseInt(robEntryNumber, 2), robEntry);
+			written = true;
+		}
+		
+		if(written) {
+			for(int i=0; i<rsEntry.length; i++) {
+				rsEntry[i] = "$$$$$$$$$$$$$$$$";
+			}
+			reservationStations.put(rsName, rsEntry);
+		}
+		
+		return written;
+	}
+	
+	public void fetch(){
+		
+		if(unconditionalJMP == false){
+			int j = 0;
+			while(instToFetchAddress<a.getEndAddress() && j<instBuffer.length){
+				
+				//each two cells in memory is an instruction 
+				instBuffer[j] = readData(to16BinaryStringValue(instToFetchAddress), true, "");
+				instArrayBinary.put(instNumber++, instBuffer[j]);
+				if(instBuffer[j].startsWith("110")){
+					//BEQ instruction
+					if((signedBinaryToDecimal(instBuffer[j].substring(9, 16)))<0){
+						//prediction : Taken
+						instToFetchAddress = Integer.parseInt((instBuffer[j]) , 2)+ signedBinaryToDecimal(instBuffer[j].substring(9, 16));
+					}
+					else //prediction : not taken
+						instToFetchAddress += 2;
+						
+				}
+				else if(instBuffer[j].startsWith("0100000000") || instBuffer[j].startsWith("001000") ||instBuffer[j].startsWith("0110000000000")){
+					// JALR or RET or JMP insructions always assumed to be taken 
+					unconditionalJMP = true;
+					
+				}
+				else
+					instToFetchAddress += 2; 
+				
+				j++;
+			}
+		}	
+	}
+	public void execute() {
+		
+		String instToExecute;
+		String[] inner;
+		
+		
+		
+		//Load instructions
+		for(int a = 1 ; a<=loadRs ; a++ ){
+			String x = "Load"+a;
+			inner = reservationStations.get(x);
+			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
+				String immediateValue = instToExecute.substring(9, 16);
+				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+				reservationStations.get(x)[7] = to16BinaryStringValue(memoryAddress);
+				//result is the data to be read
+				String result = readData(to16BinaryStringValue(memoryAddress), false, "");
+			}
+		}
+		//Store instructions
+		for(int a = 1 ; a<=storeRs ; a++){
+			String x = "Store"+a;
+			inner = reservationStations.get(x);
+			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
+				String immediateValue = instToExecute.substring(9, 16);
+				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+				reservationStations.get(x)[7] = to16BinaryStringValue(memoryAddress);
+				//result is the memory address to write to 
+				
+			}
+			
+		}
+
+
+		//ADD single precision instruction
+		for(int a = 1 ;a<integerAddSubRs ; a++){
+			String x = "Add"+a;
+			inner = reservationStations.get(x);
+			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+			
+			//JALR (to be continued..)
+			if(instToExecute.startsWith("0100000000")) {
+				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+					//return address to be written in destination (regA)
+					String result = to16BinaryStringValue((Integer.parseInt(instToExecute , 2)+2)); 
+					//instruction address to jump to (regB)
+					int regB = Integer.parseInt(instToExecute.substring(13, 16), 2);
+					instToFetchAddress = Integer.parseInt((registers.get(regB)),2);
+					unconditionalJMP = false;
+				}	
+			}
+			//RET (to be continued..)
+			if(instToExecute.startsWith("0110000000000")) {
+				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+					// intruction address to return to
+					int regA = Integer.parseInt(instToExecute.substring(13, 16), 2);
+					instToFetchAddress = Integer.parseInt((registers.get(regA)),2);
+					unconditionalJMP = false;
+				}
+			}
+			//JMP (to be continued..)
+			if(instToExecute.startsWith("001000")) {
+				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+					//instruction address to jump to
+					int regA = Integer.parseInt(instToExecute.substring(6, 9), 2);
+					String immediateValue = instToExecute.substring(9, 16);
+					instToFetchAddress = Integer.parseInt(instToExecute , 2)+ Integer.parseInt((registers.get(regA)),2)+ signedBinaryToDecimal(immediateValue);
+					unconditionalJMP = false ; 
+				}	
+			}	
+			//ADDI
+			if(instToExecute.startsWith("111")){
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
+					
+					int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
+					int immediateValue = signedBinaryToDecimal(instToExecute.substring(9, 16));
+					int r = Integer.parseInt(registers.get(regB), 2) + immediateValue;
+					//result is the value to be stored in the destination register(regA)
+					String result = to16BinaryStringValue(r);
+				}	
+			}
+					
+			
+		}
+
+		//ADD double precision instruction
+		for(int a = 1 ; a<doublePrecisionAddSubRs ; a++){
+			String x = "Addd"+a;
+			inner = reservationStations.get(x);
+			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+			
+			//BEQ instruction (to be continued..)
+			if(instToExecute.startsWith("110")){
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
+					int regA = Integer.parseInt(instToExecute.substring(3, 6), 2);
+					int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
+					String immediateValue = instToExecute.substring(9, 16);
+					String regAValue = registers.get(regA);
+					String regBValue = registers.get(regB);
+					
+					if(signedBinaryToDecimal(immediateValue)<0){
+						//branch prediction : Taken
+						if(regAValue.equalsIgnoreCase(regBValue)){
+							//branch is taken
+							branchPrediction.put(Integer.parseInt(inner[8],2), false);
+						}
+						else //misprediction occured
+							branchPrediction.put(Integer.parseInt(inner[8],2), true);
+					}
+					else{
+						//branch prediction : not taken
+						if(!regAValue.equalsIgnoreCase(regBValue)){
+							//branch is not taken
+							branchPrediction.put(Integer.parseInt(inner[8],2), false);
+						}
+						else //misprediction occured
+							branchPrediction.put(Integer.parseInt(inner[8],2), true);
+					}
+						
+				}
+			}
+		
+			//ADD instruction
+			if(instToExecute.startsWith("0000000")) {
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
+					
+					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+					int r = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
+					//result to be stored in destination register (regA)
+					String result = to16BinaryStringValue(r);
+				}
+			}
+			//SUB instruction
+			if(instToExecute.startsWith("0000001")) {
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
+					
+					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+					int r = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
+					//result to be stored in destination register (regA)
+					String result = to16BinaryStringValue(r);
+				}
+			}
+			//NAND instruction
+			if(instToExecute.startsWith("0000010")) {
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
+					
+					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+					int r = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
+					//result to be stored in destination register (regA)
+					String result = to16BinaryStringValue(r);
+				}
+			}
+		}
+
+		//Mul and Div instructions
+		for(int a = 1 ; a<multDivRs ; a++){
+			String x = "Multd"+a;
+			inner = reservationStations.get(x);
+			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+				
+				int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+				int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+				int r = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
+				//result to be stored in destination register (regA)
+				String result = to16BinaryStringValue(r);
+			}
+			
+		}
+	}	
+///////////////////////////////old execute///////////////////////////////////////////////////////////
+//		public void execute() {
+//		int address = this.pc;
+//		String dataAddress = to16BinaryStringValue(address);		
+//		String data = Data(dataAddress, true, "");
+//		
+//		while(!data.equalsIgnoreCase("nullnull")){
+//			if(data.startsWith("100")) {
+//				//load
+//				int regA = Integer.parseInt(data.substring(3, 6), 2);
+//				int regB = Integer.parseInt(data.substring(6, 9), 2);
+//				String immediateValue = data.substring(9, 16);
+//				
+//				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+//				
+////				if (a.getAddressesMapping().containsKey(memoryAddress)){
+////					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+////				}
+//				
+//				String readData = readData(to16BinaryStringValue(memoryAddress), false, "");
+//				
+//				registers.put(regA, readData);
+//				
+//				
+//			}
+//			else if(data.startsWith("101")) {
+//				//store
+//				int regA = Integer.parseInt(data.substring(3, 6), 2);
+//				int regB = Integer.parseInt(data.substring(6, 9), 2);
+//				String immediateValue = data.substring(9, 16);
+//				
+//				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+//				
+////				if (a.getAddressesMapping().containsKey(memoryAddress)){
+////					memoryAddress = a.getAddressesMapping().get(memoryAddress);
+////				}
+//				
+//				readData(to16BinaryStringValue(memoryAddress), false, registers.get(regA));
+//				
+//			}
+//			else if(data.startsWith("110")) {
+//				//BEQ
+//				int regA = Integer.parseInt(data.substring(3, 6), 2);
+//				int regB = Integer.parseInt(data.substring(6, 9), 2);
+//				String immediateValue = data.substring(9, 16);
+//				
+//				String regAValue = registers.get(regA);
+//				String regBValue = registers.get(regB);
+//				
+//				if(regAValue.equalsIgnoreCase(regBValue)){
+//					this.pc = this.pc + 2 + signedBinaryToDecimal(immediateValue) - 2; 
+//				}
+//				
+//			}
+//			else if(data.startsWith("111")) {
+//				//AddI
+//				int regA = Integer.parseInt(data.substring(3, 6), 2);
+//				int regB = Integer.parseInt(data.substring(6, 9), 2);
+//				int immediateValue = signedBinaryToDecimal(data.substring(9, 16));
+//				
+//				int result = Integer.parseInt(registers.get(regB), 2) + immediateValue;
+//				
+//				if (regA != 0) {
+//					registers.put(regA, to16BinaryStringValue(result));
+//				}
+//			}
+//			else if(data.startsWith("0000000")) {
+//				//Add
+//				int regA = Integer.parseInt(data.substring(7, 10), 2);
+//				int regB = Integer.parseInt(data.substring(10, 13), 2);
+//				int regC = Integer.parseInt(data.substring(13, 16), 2);
+//				
+//				int result = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
+//				
+//				if(regA != 0) {
+//					registers.put(regA, to16BinaryStringValue(result));
+//				}
+//				
+//			}
+//			else if(data.startsWith("0000001")) {
+//				//SUB
+//				int regA = Integer.parseInt(data.substring(7, 10), 2);
+//				int regB = Integer.parseInt(data.substring(10, 13), 2);
+//				int regC = Integer.parseInt(data.substring(13, 16), 2);
+//				
+//				int result = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
+//				
+//				if(regA != 0) {
+//					registers.put(regA, to16BinaryStringValue(result));
+//				}
+//			}
+//			else if(data.startsWith("0000010")) {
+//				//NAND
+//				int regA = Integer.parseInt(data.substring(7, 10), 2);
+//				int regB = Integer.parseInt(data.substring(10, 13), 2);
+//				int regC = Integer.parseInt(data.substring(13, 16), 2);
+//				
+//				int result = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
+//				
+//				if (regA != 0) {
+//					registers.put(regA, to16BinaryStringValue(result));
+//				}
+//			}
+//			else if(data.startsWith("0000011")) {
+//				//MUL
+//				int regA = Integer.parseInt(data.substring(7, 10), 2 );
+//				int regB = Integer.parseInt(data.substring(10, 13), 2);
+//				int regC = Integer.parseInt(data.substring(13, 16), 2);
+//				
+//				int result = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
+//				
+//				if(regA != 0) {
+//					registers.put(regA, to16BinaryStringValue(result));
+//				}
+//			}
+//			else if(data.startsWith("001000")) {
+//				//JMP
+//				int regA = Integer.parseInt(data.substring(6, 9), 2);
+//				String immediateValue = data.substring(9, 16);
+//				
+//				String regAValue = registers.get(regA);
+//				
+//				this.pc = this.pc + 2 + Integer.parseInt(registers.get(regA), 2) + signedBinaryToDecimal(immediateValue) - 2; 
+//				
+//			}
+//			else if(data.startsWith("0100000000")) {
+//				//JALR
+//				int regA = Integer.parseInt(data.substring(10, 13), 2);
+//				int regB = Integer.parseInt(data.substring(13, 16), 2);
+//				
+//				if (regA != 0) {
+//					registers.put(regA, to16BinaryStringValue(this.pc+2));
+//				}
+//				this.pc = Integer.parseInt(registers.get(regB), 2)-2;
+//				
+//				
+//				
+//			}
+//			else if(data.startsWith("0110000000000")) {
+//				//RET
+//				int regA = Integer.parseInt(data.substring(13, 16), 2);
+//				
+//				this.pc = Integer.parseInt(registers.get(regA), 2)-2;
+//			}
+//			
+//			this.pc += 2;
+//			numberOfInstructionsExcuted++;
+//			address = this.pc;
+//			dataAddress = to16BinaryStringValue(address);		
+//			data = readData(dataAddress, true, "");
+//			for(int i = 0;i<dCacheLevels.size();i++){
+//				System.out.println("the hit ratio for d cache of level "+i+" is "+dCacheLevels.get(i).getHitRatio());
+//			}
+//			for(int i = 0;i<iCacheLevels.size();i++){
+//				System.out.println("the hit ratio for i cache of level "+i+" is "+iCacheLevels.get(i).getHitRatio());
+//			}
+//			System.out.println("the global AMAT for d cache is : "+getGlobalAmat()[0]);
+//			System.out.println("the global AMAT for i cache is : "+getGlobalAmat()[1]);
+//		}
+//		}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
 	public static void main(String[] args) throws Exception {
 		Scanner sc = new Scanner(System.in);
 		System.out
@@ -551,40 +971,45 @@ public class Microprocessor {
 		 * destination registers needs more bits than the available in the
 		 * instructions
 		 */
-		for (int i = 0; i < numberOfInstructionsToBeIssued; i++) {
-			String data = instructionBuffer[i];
+		boolean issued [] = new boolean[numberOfWays];
+		for (int i = 0; i < numberOfWays; i++) {
+			String data = instArrayBinary.get(instBuffer[i]);
 			if (data.startsWith("100")) {
 				// load
 				int regA = Integer.parseInt(data.substring(3, 6), 2);
 				int regB = Integer.parseInt(data.substring(6, 9), 2);
 				String immediateValue = data.substring(9, 16);
 				int j = 1;
-				for (j = 1; j <= numberOfLoads; j++)
+				for (j = 1; j <= loadRs; j++)
 					if (reservationStations.get("Load" + j)[0]
 							.equalsIgnoreCase("n"))
 						break;
 
-				if (j <= numberOfLoads
-						//tail byshawer 3ala 7eta malyana 
+				if (j <= loadRs 
 						&& !(head == tail && !reorderBuffer.get(head)[0]
 								.contains("$"))) {
-					reservationStations.get("Load" + j)[0] = "Y";
-					reservationStations.get("Load" + j)[1] = "load";
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("Load" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "load";
 					if (registerStatus.get(regB) == 0) {
-						reservationStations.get("Load" + j)[2] = registers
+						resEntry[2] = registers
 								.get(regB);
-						reservationStations.get("Load" + j)[3] = "0";
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
 					}else{
-						reservationStations.get("Load" + j)[2] = "0";
-						reservationStations.get("Load" + j)[3] = registerStatus.get(regB)+"";
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
 					}
-					reservationStations.get("Load" + j)[4] = "0";
-					reservationStations.get("Load" + j)[5] = "0";
-					reservationStations.get("Load" + j)[6] = tail + "";
-					reservationStations.get("Load" + j)[7] = immediateValue;
-					String robEntry[] = { "LD", regA + "", "", "N" };
+					resEntry[3] = "$$$$$$$$$$$$$$$$";
+					resEntry[5] = "$$$$$$$$$$$$$$$$";
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "Load", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
 					reorderBuffer.put(tail, robEntry);
 					registerStatus.put(regA, tail);
+					reservationStations.put("Load"+j, resEntry);
 					// increment tail correctly
 					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
@@ -594,16 +1019,40 @@ public class Microprocessor {
 				int regA = Integer.parseInt(data.substring(3, 6), 2);
 				int regB = Integer.parseInt(data.substring(6, 9), 2);
 				String immediateValue = data.substring(9, 16);
+				int j = 1;
+				for (j = 1; j <= storeRs; j++)
+					if (reservationStations.get("Store" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				int memoryAddress = Integer.parseInt(registers.get(regB), 2)
-						+ signedBinaryToDecimal(immediateValue);
-
-				// if (a.getAddressesMapping().containsKey(memoryAddress)){
-				// memoryAddress = a.getAddressesMapping().get(memoryAddress);
-				// }
-
-				readData(to16BinaryStringValue(memoryAddress), false,
-						registers.get(regA));
+				if (j <= storeRs 
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("Store" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "Store";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					resEntry[3] = "$$$$$$$$$$$$$$$$";
+					resEntry[5] = "$$$$$$$$$$$$$$$$";
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "Store", regB + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("Store"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
 
 			} else if (data.startsWith("110")) {
 				// BEQ
@@ -611,38 +1060,137 @@ public class Microprocessor {
 				int regB = Integer.parseInt(data.substring(6, 9), 2);
 				String immediateValue = data.substring(9, 16);
 
-				String regAValue = registers.get(regA);
-				String regBValue = registers.get(regB);
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				if (regAValue.equalsIgnoreCase(regBValue)) {
-					this.pc = this.pc + 2
-							+ signedBinaryToDecimal(immediateValue) - 2;
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "branch";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "branch", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("branch"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
 
 			} else if (data.startsWith("111")) {
 				// AddI
 				int regA = Integer.parseInt(data.substring(3, 6), 2);
 				int regB = Integer.parseInt(data.substring(6, 9), 2);
-				int immediateValue = signedBinaryToDecimal(data
-						.substring(9, 16));
+				String immediateValue = data.substring(9, 16);
 
-				int result = Integer.parseInt(registers.get(regB), 2)
-						+ immediateValue;
+				int j = 1;
+				for (j = 1; j <= integerAddSubRs ; j++)
+					if (reservationStations.get("add" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
+				if (j <= integerAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("add" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "addi";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "addi", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("add"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
 			} else if (data.startsWith("0000000")) {
 				// Add
 				int regA = Integer.parseInt(data.substring(7, 10), 2);
 				int regB = Integer.parseInt(data.substring(10, 13), 2);
 				int regC = Integer.parseInt(data.substring(13, 16), 2);
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				int result = Integer.parseInt(registers.get(regB), 2)
-						+ Integer.parseInt(registers.get(regC), 2);
-
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "addd";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "addd", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
 
 			} else if (data.startsWith("0000001")) {
@@ -651,11 +1199,45 @@ public class Microprocessor {
 				int regB = Integer.parseInt(data.substring(10, 13), 2);
 				int regC = Integer.parseInt(data.substring(13, 16), 2);
 
-				int result = Integer.parseInt(registers.get(regB), 2)
-						- Integer.parseInt(registers.get(regC), 2);
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "subb";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "subb", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
 			} else if (data.startsWith("0000010")) {
 				// NAND
@@ -663,11 +1245,45 @@ public class Microprocessor {
 				int regB = Integer.parseInt(data.substring(10, 13), 2);
 				int regC = Integer.parseInt(data.substring(13, 16), 2);
 
-				int result = (Integer.parseInt(registers.get(regB), 2) & Integer
-						.parseInt(registers.get(regC), 2));
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "nand";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "nand", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
 			} else if (data.startsWith("0000011")) {
 				// MUL
@@ -675,38 +1291,181 @@ public class Microprocessor {
 				int regB = Integer.parseInt(data.substring(10, 13), 2);
 				int regC = Integer.parseInt(data.substring(13, 16), 2);
 
-				int result = Integer.parseInt(registers.get(regB), 2)
-						* Integer.parseInt(registers.get(regC), 2);
+				int j = 1;
+				for (j = 1; j <= multDivRs ; j++)
+					if (reservationStations.get("multd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(result));
+				if (j <= multDivRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("multd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "multd";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "multd", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("multd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
 			} else if (data.startsWith("001000")) {
 				// JMP
 				int regA = Integer.parseInt(data.substring(6, 9), 2);
 				String immediateValue = data.substring(9, 16);
 
-				String regAValue = registers.get(regA);
+				int j = 1;
+				for (j = 1; j <= integerAddSubRs ; j++)
+					if (reservationStations.get("add" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
 
-				this.pc = this.pc + 2
-						+ Integer.parseInt(registers.get(regA), 2)
-						+ signedBinaryToDecimal(immediateValue) - 2;
+				if (j <= integerAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("add" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "jmp";
+					resEntry[2]="$$$$$$$$$$$$$$$$";
+					resEntry[4]="$$$$$$$$$$$$$$$$";
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "jmp", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("add"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
 
 			} else if (data.startsWith("0100000000")) {
 				// JALR
 				int regA = Integer.parseInt(data.substring(10, 13), 2);
 				int regB = Integer.parseInt(data.substring(13, 16), 2);
 
-				if (regA != 0) {
-					registers.put(regA, to16BinaryStringValue(this.pc + 2));
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "jalr";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "jalr", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
 				}
-				this.pc = Integer.parseInt(registers.get(regB), 2) - 2;
 
 			} else if (data.startsWith("0110000000000")) {
 				// RET
 				int regA = Integer.parseInt(data.substring(13, 16), 2);
-				this.pc = Integer.parseInt(registers.get(regA), 2) - 2;
+				int j = 1;
+				for (j = 1; j <= integerAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= integerAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("add" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "ret";
+					resEntry[2]="$$$$$$$$$$$$$$$$";
+					resEntry[4]="$$$$$$$$$$$$$$$$";
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "ret", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("add"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
 			}
 		}
+		int index=0;
+		int [] newInstBuffer = new int[numberOfWays];
+		for(int i =0 ;i<numberOfWays;i++){
+			if(!issued[i]){
+				newInstBuffer[index]=instBuffer[i];
+				index++;
+			}else
+				updateClockCycle(instBuffer[i], programCycles, 1);
+		}
+		instBuffer=newInstBuffer;
+		fetch(index);
 	}
 }
