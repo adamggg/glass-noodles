@@ -316,7 +316,7 @@ public class Assembler {
 			System.out.println(a.getMemoryArray()[i]);
 		System.out.println(a.getBaseAddress());
 		System.out.println(a.getEndAddress());
-	
+		
 		
 		
 		

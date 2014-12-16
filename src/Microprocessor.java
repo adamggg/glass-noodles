@@ -38,7 +38,7 @@ public class Microprocessor {
 	HashMap<Integer ,String> branchPrediction;//keep track of branch instructions misprediction
 	int instToFetchAddress;
 	boolean unconditionalJMP = false;
-	int instNumber = 1; //needed to keep track of order of instructions in the given program 
+	int instNumber = 0; //needed to keep track of order of instructions in the given program 
 	int loadRs = 0;
 	int storeRs = 0;
 	int integerAddSubRs = 0;
@@ -577,15 +577,14 @@ public class Microprocessor {
 	}
 	
 	public void fetch(int j){
-		String fetchedInst ;
 		if(unconditionalJMP == false){
-			
+			String fetchedInst ;
 			while(instToFetchAddress<a.getEndAddress() && j<numberOfWays){
 				
 				//each two cells in memory is an instruction
 				fetchedInst = readData(to16BinaryStringValue(instToFetchAddress), true, "");
-				instBuffer[j] = instNumber;
-				instArrayBinary.put(instNumber++, fetchedInst);
+				instBuffer[j] = ++instNumber;
+				instArrayBinary.put(instNumber, fetchedInst);
 				if(fetchedInst.startsWith("110")){
 					//BEQ instruction
 					if((signedBinaryToDecimal(fetchedInst.substring(9, 16)))<0){
@@ -603,7 +602,8 @@ public class Microprocessor {
 				}
 				else
 					instToFetchAddress += 2; 
-				
+				//update cycles table
+				updateClockCycle (instNumber, programCycles, 0);
 				j++;
 			}
 		}	
@@ -619,7 +619,7 @@ public class Microprocessor {
 		for(int a = 1 ; a<=loadRs ; a++ ){
 			String x = "Load"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+			if(inner[4].startsWith("$") && inner[9].startsWith("$")){
 				// new load instruction
 				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
@@ -631,7 +631,7 @@ public class Microprocessor {
 				reservationStations.get(x)[9] = to16BinaryStringValue(loadLatency);
 
 			}
-			else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+			else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
 					// load instruction in execute process
 					if(Integer.parseInt(inner[9],2)==0){
 						// load instruction just finished execution 
@@ -648,6 +648,8 @@ public class Microprocessor {
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
+						//update cycles table
+						updateClockCycle(Integer.parseInt(inner[8],2), programCycles+loadLatency, 2);
 				}
 				else if(Integer.parseInt(inner[9],2)>0){
 						// load instruction still not finished
@@ -659,7 +661,7 @@ public class Microprocessor {
 		for(int a = 1 ; a<=storeRs ; a++){
 			String x = "Store"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+			if(inner[4].startsWith("$") && inner[9].startsWith("$")){
 				// new store instruction
 				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
@@ -668,9 +670,9 @@ public class Microprocessor {
 				// writing memory address to write data to into A
 				reservationStations.get(x)[7] = to16BinaryStringValue(memoryAddress);
 				// writing the store latency in the last cell in rs
-				reservationStations.get(x)[9] = to16BinaryStringValue(loadLatency);
+				reservationStations.get(x)[9] = to16BinaryStringValue(storeLatency);
 			}
-			else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+			else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
 					// store instruction in execute process
 					if(Integer.parseInt(inner[9],2)==0){
 						//store instruction just finished execution
@@ -681,6 +683,8 @@ public class Microprocessor {
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
+						//update cycles table
+						updateClockCycle(Integer.parseInt(inner[8],2), programCycles+storeLatency, 2);
 					}
 					else if(Integer.parseInt(inner[9],2)>0){
 							// store instruction still not finished
@@ -696,13 +700,13 @@ public class Microprocessor {
 			inner = reservationStations.get(x);
 			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 			
-			//JALR (to be continued..)
+			//JALR instruction
 			if(instToExecute.startsWith("0100000000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$") && inner[9].startsWith("$")){
 					//new JALR instruction
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
 						// JALR instruction in process
 						if(Integer.parseInt(inner[9],2) == 0){
 							//JALR instruction just finished execution
@@ -718,6 +722,8 @@ public class Microprocessor {
 							instToFetchAddress = Integer.parseInt((registers.get(regB)),2);
 							unconditionalJMP = false;
 							reservationStations.get(x)[9] = "-1";
+							//update cycles table
+							updateClockCycle(Integer.parseInt(inner[8],2), programCycles+integerAddSubLatency, 2);
 
 							
 						}
@@ -729,13 +735,13 @@ public class Microprocessor {
 				}
 			}	
 		
-			//RET (to be continued..)
+			//RET instruction
 			if(instToExecute.startsWith("0110000000000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$") && inner[9].startsWith("$")){
 					//new RET instruction
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
 						//RET instruction in process
 						if(Integer.parseInt(inner[9],2)==0){
 							//RET instruction just finished execution
@@ -746,6 +752,8 @@ public class Microprocessor {
 							instToFetchAddress = Integer.parseInt((registers.get(regA)),2);
 							unconditionalJMP = false;
 							reservationStations.get(x)[9] = "-1";
+							//update cycles table
+							updateClockCycle(Integer.parseInt(inner[8],2), programCycles+integerAddSubLatency, 2);
 							
 						}
 						else if(Integer.parseInt(inner[9],2)>0){
@@ -754,13 +762,13 @@ public class Microprocessor {
 						}
 				}
 			}
-			//JMP (to be continued..)
+			//JMP instruction
 			if(instToExecute.startsWith("001000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$") && inner[9].startsWith("$")){
 					// new JMP instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
 						// JMP instruction in process
 						if(Integer.parseInt(inner[9],2)==0){
 							//JMP instruction just finished execution
@@ -772,6 +780,8 @@ public class Microprocessor {
 							instToFetchAddress = Integer.parseInt(instToExecute , 2)+ Integer.parseInt((registers.get(regA)),2)+ signedBinaryToDecimal(immediateValue);
 							unconditionalJMP = false ;
 							reservationStations.get(x)[9] = "-1";
+							//update cycles table
+							updateClockCycle(Integer.parseInt(inner[8],2), programCycles+integerAddSubLatency, 2);
 						}
 						else if(Integer.parseInt(inner[9],2)>0){
 							// RET instruction still not finished
@@ -782,12 +792,12 @@ public class Microprocessor {
 			}	
 			//ADDI
 			if(instToExecute.startsWith("111")){
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$")&& inner[9].startsWith("$")){
 					// new ADDI instruction 
 					
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$")&& !inner[9].startsWith("$")){
 						// ADDI instruction in execute process
 						if(Integer.parseInt(inner[9],2) == 0){
 							//ADDI instruction just finished execution
@@ -799,10 +809,12 @@ public class Microprocessor {
 							String[] writeBufferInnerArray = new String[3];
 							writeBufferInnerArray[0] = result;
 							writeBufferInnerArray[1] = x;
-							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+integerAddSubLatency);
 							//writing to write buffer
 							writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 							reservationStations.get(x)[9] = "-1";
+							//update cycles table
+							updateClockCycle(Integer.parseInt(inner[8],2), programCycles+integerAddSubLatency, 2);
 						}
 						else if(Integer.parseInt(inner[9],2)>0){
 							// ADDI instruction still not finished
@@ -820,11 +832,11 @@ public class Microprocessor {
 			
 			//BEQ instruction 
 			if(instToExecute.startsWith("110")){
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new BEQ instruction
-					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
+					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$") && inner[5].startsWith("$")&& !inner[9].startsWith("$")){
 						// BEQ instruction in process
 						if(Integer.parseInt(inner[9],2)==0){
 							//BEQ just finished execution
@@ -835,8 +847,10 @@ public class Microprocessor {
 							String regBValue = registers.get(regB);
 							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
 							reorderBuffer.get(entry)[3] = "yes";
-							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
+							reorderBuffer.get(entry)[5] = to16BinaryStringValue(doublePrecisionAddSubLatency+programCycles);
 							reservationStations.get(x)[9] = "-1";
+							//update cycles table
+							updateClockCycle(Integer.parseInt(inner[8],2), programCycles+doublePrecisionAddSubLatency, 2);
 							
 							if(signedBinaryToDecimal(immediateValue)<0){
 								//branch prediction : Taken
@@ -868,11 +882,11 @@ public class Microprocessor {
 		
 			//ADD instruction
 			if(instToExecute.startsWith("0000000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new ADD instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 						// ADD instruction in process 
 						if(Integer.parseInt(inner[9],2)==0){
 							// ADD instruction just finished execution
@@ -884,10 +898,12 @@ public class Microprocessor {
 							String[] writeBufferInnerArray = new String[3];
 							writeBufferInnerArray[0] = result;
 							writeBufferInnerArray[1] = x;
-							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
 							//writing to write buffer
 							writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 							reservationStations.get(x)[9] = "-1";
+							//update cycles table
+							updateClockCycle(Integer.parseInt(inner[8],2), programCycles+doublePrecisionAddSubLatency, 2);
 
 						}
 						else if(Integer.parseInt(inner[9],2)>0){
@@ -898,11 +914,11 @@ public class Microprocessor {
 			}
 			//SUB instruction
 			if(instToExecute.startsWith("0000001")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new SUB instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 					// SUB instruction in process 
 					if(Integer.parseInt(inner[9],2)==0){
 						// SUB instruction just finished execution
@@ -914,29 +930,26 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
+						//update cycles table
+						updateClockCycle(Integer.parseInt(inner[8],2), programCycles+doublePrecisionAddSubLatency, 2);
 					}
 					else if(Integer.parseInt(inner[9],2)>0){
 						//SUB instruction still not finished
 						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
 					}
-					
 				}
-				
-				
-				
-				
 			}
 			//NAND instruction
 			if(instToExecute.startsWith("0000010")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new NAND instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+				else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 					// NAND instruction in process 
 					if(Integer.parseInt(inner[9],2)==0){
 						//NAND instruction just finished execution
@@ -948,31 +961,31 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
-
+						//update cycles table
+						updateClockCycle(Integer.parseInt(inner[8],2), programCycles+doublePrecisionAddSubLatency, 2);
 
 					}
 					else if(Integer.parseInt(inner[9],2)>0){
 						//NAND instruction still not finished
 						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
 					}
-					
 				}
 			}
 		}
 
-		//Mul and Div instructions
+		//Mul and Div instructions /////////////////////////(Note: multdiv latency missing)/////////////////////////////////// 
 		for(int a = 1 ; a<multDivRs ; a++){
 			String x = "Multd"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+			if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 				//new Mul instruction 
 				reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 			}
-			else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+			else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 					//Mul instruction in process
 					if(Integer.parseInt(inner[9],2)==0){
 						//Mul instruction just finished execution
@@ -985,10 +998,12 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
+						//update cycles table
+						updateClockCycle(Integer.parseInt(inner[8],2), programCycles+doublePrecisionAddSubLatency, 2);
 
 					}
 					else if(Integer.parseInt(inner[9],2)>0){
