@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Set;
 
+import sun.security.x509.IssuerAlternativeNameExtension;
+
 import com.sun.xml.internal.ws.api.pipe.NextAction;
 
 public class Microprocessor {
@@ -19,14 +21,18 @@ public class Microprocessor {
 	int totalNumberOfCyclesSpentForMemory;
 	HashMap<Integer, String> registers;
 	Assembler a;
-	
-	//Start Of New Code
-	HashMap<Integer, String []> reorderBuffer;
+
+	// Start Of New Code
+	HashMap<Integer, String[]> reorderBuffer;
 	int head;
 	int tail;
-	HashMap<String, String []> reservationStations;
+	HashMap<String, String[]> reservationStations;
 	HashMap<Integer, Integer> registerStatus;
+
 	int[] instBuffer ;
+
+	// End Of New Code
+
 	//HashMap<Integer ,Instruction > instArray; //array containing instructions with the needed specifications in the given program 
 	HashMap<Integer ,String> instArrayBinary;//array containing instructions in program order
 	HashMap<Integer ,String> branchPrediction;//keep track of branch instructions misprediction
@@ -51,6 +57,7 @@ public class Microprocessor {
 	int programCycles = 0;
 	//End Of New Code
 	
+
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
 		this.dCacheLevels = new ArrayList<Cache>();
 		this.iCacheLevels = new ArrayList<Cache>();
@@ -78,48 +85,50 @@ public class Microprocessor {
 		configFile.readLine();
 		int memoryAccessTime = Integer.parseInt(configFile.readLine());
 		this.memory = new Memory(memory, baseAddress, memoryAccessTime);
-		
+
 		this.pc = this.memory.getInstructionBaseAddress();
 		this.numberOfInstructionsExcuted = 0;
 		this.totalNumberOfCyclesSpentForMemory = 0;
-		
+
 		this.registers = new HashMap<Integer, String>();
 
 		for (int i = 0; i < 8; i++) {
 			registers.put(i, "0000000000000000");
 		}
-		
-		//cache part
-		
+
+		// cache part
+
 		int level = 0;
 		int s, l, m, cacheAccessTime;
 		String writePolicy;
-		while(configFile.ready()) {
-			//D-Cache
+		while (configFile.ready()) {
+			// D-Cache
 			configFile.readLine();
 			s = Integer.parseInt(configFile.readLine());
 			l = Integer.parseInt(configFile.readLine());
 			m = Integer.parseInt(configFile.readLine());
 			writePolicy = configFile.readLine();
 			cacheAccessTime = Integer.parseInt(configFile.readLine());
-			dCacheLevels.add(level, new Cache(s, l, m, writePolicy, cacheAccessTime));
-			
-			//I-Cache
+			dCacheLevels.add(level, new Cache(s, l, m, writePolicy,
+					cacheAccessTime));
+
+			// I-Cache
 			configFile.readLine();
 			s = Integer.parseInt(configFile.readLine());
 			l = Integer.parseInt(configFile.readLine());
 			m = Integer.parseInt(configFile.readLine());
 			writePolicy = configFile.readLine();
 			cacheAccessTime = Integer.parseInt(configFile.readLine());
-			iCacheLevels.add(level, new Cache(s, l, m, writePolicy, cacheAccessTime));
-			
+			iCacheLevels.add(level, new Cache(s, l, m, writePolicy,
+					cacheAccessTime));
+
 			configFile.readLine();
 			level++;
 		}
 		configFile.close();
-		
-		//Start Of New Code
-		//ROB
+
+		// Start Of New Code
+		// ROB
 		this.head = 1;
 		this.tail = 1;
 		this.reorderBuffer = new HashMap<Integer, String []>();
@@ -129,10 +138,11 @@ public class Microprocessor {
 		for(int i=0; i<6; i++) {
 			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
-		
-		for(int i = 1; i <= numberOfRobEntries; i++){
+
+		for (int i = 1; i <= numberOfRobEntries; i++) {
 			this.reorderBuffer.put(i, robInitialArray);
 		}
+
 		
 		//Reservation Stations
 		this.reservationStations = new HashMap<String, String []>();
@@ -164,12 +174,14 @@ public class Microprocessor {
 			rsName = "Multd" + j;
 			reservationStations.put(rsName, rsInitialArray);
 		}
-		
-		//Register Status
+
+		// Register Status
 		this.registerStatus = new HashMap<Integer, Integer>();
 		for (int i = 0; i < 8; i++) {
 			registerStatus.put(i, 0);
 		}
+
+
 		
 		//WriteBuffer
 		this.writeBuffer = new HashMap<Integer, String []>();
@@ -180,85 +192,102 @@ public class Microprocessor {
 		//End Of New Code
 		
 	}
-	
-	public String readData(String address, boolean iCacheOrDCache, String dataToBeStored){
-		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
+
+	public String readData(String address, boolean iCacheOrDCache,
+			String dataToBeStored) {
+		ArrayList<Cache> cacheLevels = (iCacheOrDCache) ? iCacheLevels
+				: dCacheLevels;
 		int i = 0;
 		String data = "";
 		String offset = "";
-		for(i = 0; i < cacheLevels.size() ; i++){
-			totalNumberOfCyclesSpentForMemory += cacheLevels.get(i).getCacheAccessTime();
-			data = cacheLevels.get(i).readCache(address);			
+		for (i = 0; i < cacheLevels.size(); i++) {
+			totalNumberOfCyclesSpentForMemory += cacheLevels.get(i)
+					.getCacheAccessTime();
+			data = cacheLevels.get(i).readCache(address);
 			offset = cacheLevels.get(i).splitAddress(address).get("offset");
-			//String [] dataBytes = new String[data.length()/8]; 
-			if(data != null){
-				String [] dataBytes = new String[data.length()/8];
-				writeCacheRecursively(address, i-1, iCacheOrDCache,dataToBeStored);
+			// String [] dataBytes = new String[data.length()/8];
+			if (data != null) {
+				String[] dataBytes = new String[data.length() / 8];
+				writeCacheRecursively(address, i - 1, iCacheOrDCache,
+						dataToBeStored);
 
-				if (offset.length() == 1){
+				if (offset.length() == 1) {
 					return data;
-				}
-				else { 
-					int wordNumber = Integer.parseInt(offset.substring(0, offset.length()-1), 2);
-					for(int k=0; k<data.length()/8; k++) {
-						dataBytes [k] = data.substring(k*8, (k+1)*8);
+				} else {
+					int wordNumber = Integer.parseInt(
+							offset.substring(0, offset.length() - 1), 2);
+					for (int k = 0; k < data.length() / 8; k++) {
+						dataBytes[k] = data.substring(k * 8, (k + 1) * 8);
 					}
-					return dataBytes[wordNumber]+dataBytes[wordNumber+1];
+					return dataBytes[wordNumber] + dataBytes[wordNumber + 1];
 				}
 			}
 		}
-		
+
 		totalNumberOfCyclesSpentForMemory += memory.getMemoryAccessTime();
-		int wordNumber = (offset.length()==1)?0:Integer.parseInt(offset.substring(0, offset.length()-1), 2);
-		String [] block = memory.read(address, cacheLevels.get(i-1));
-		writeCacheRecursively(address, i-1, iCacheOrDCache,dataToBeStored);
-		return block[wordNumber]+block[wordNumber+1];
-		
+		int wordNumber = (offset.length() == 1) ? 0 : Integer.parseInt(
+				offset.substring(0, offset.length() - 1), 2);
+		String[] block = memory.read(address, cacheLevels.get(i - 1));
+		writeCacheRecursively(address, i - 1, iCacheOrDCache, dataToBeStored);
+		return block[wordNumber] + block[wordNumber + 1];
+
 	}
-	public void writeCacheRecursively(String address ,int index,boolean iCacheOrDCache ,
-			String dataToBeStored){
-		ArrayList<Cache> cacheLevels = (iCacheOrDCache)?iCacheLevels:dCacheLevels;
-		if(!dataToBeStored.equalsIgnoreCase("")&& index<cacheLevels.size()-1){
+
+	public void writeCacheRecursively(String address, int index,
+			boolean iCacheOrDCache, String dataToBeStored) {
+		ArrayList<Cache> cacheLevels = (iCacheOrDCache) ? iCacheLevels
+				: dCacheLevels;
+		if (!dataToBeStored.equalsIgnoreCase("")
+				&& index < cacheLevels.size() - 1) {
 			index++;
 		}
-		for(int i = index ;i >= 0; i--){
-			String [] dataArray =memory.read(address, cacheLevels.get(i));
-			String data="";
-			boolean dirty=false;
-			
-			int wordNumber =(cacheLevels.get(i).splitAddress(address)
-					.get("offset").length()==1)?0:Integer.parseInt(cacheLevels.get(i).splitAddress(address)
-					.get("offset").substring(0,cacheLevels.get(i).splitAddress(address).
-							get("offset").length()-1), 2);
-			for(int j = 0 ;j<dataArray.length;j++)
-				if(!dataToBeStored.equalsIgnoreCase("") && j==wordNumber){
-					data+=dataToBeStored;
-					dirty=true;
+		for (int i = index; i >= 0; i--) {
+			String[] dataArray = memory.read(address, cacheLevels.get(i));
+			String data = "";
+			boolean dirty = false;
+
+			int wordNumber = (cacheLevels.get(i).splitAddress(address)
+					.get("offset").length() == 1) ? 0 : Integer.parseInt(
+					cacheLevels
+							.get(i)
+							.splitAddress(address)
+							.get("offset")
+							.substring(
+									0,
+									cacheLevels.get(i).splitAddress(address)
+											.get("offset").length() - 1), 2);
+			for (int j = 0; j < dataArray.length; j++)
+				if (!dataToBeStored.equalsIgnoreCase("") && j == wordNumber) {
+					data += dataToBeStored;
+					dirty = true;
 					j++;
-				}
+				} else if (dataArray[j] == null)
+					data += "$$$$$$$$";
 				else
-					if(dataArray[j]==null)
-						data+="$$$$$$$$";
-					else
-						data+=dataArray[j];
-			if(cacheLevels.get(i).writePolicy.equalsIgnoreCase("wt")){
+					data += dataArray[j];
+			if (cacheLevels.get(i).writePolicy.equalsIgnoreCase("wt")) {
 				memory.write(address, data);
-				totalNumberOfCyclesSpentForMemory += memory.getMemoryAccessTime();
+				totalNumberOfCyclesSpentForMemory += memory
+						.getMemoryAccessTime();
 			}
-			if(cacheLevels.get(i).writeCache(address, cacheLevels.get(i).trimData(data),dirty))
-				totalNumberOfCyclesSpentForMemory += cacheLevels.get(i).getCacheAccessTime();
+			if (cacheLevels.get(i).writeCache(address,
+					cacheLevels.get(i).trimData(data), dirty))
+				totalNumberOfCyclesSpentForMemory += cacheLevels.get(i)
+						.getCacheAccessTime();
 		}
 	}
-	
+
 	public String to16BinaryStringValue(int value) {
 		String returnValue = Integer.toBinaryString(value);
-		
-		while(returnValue.length() < 16) {
+
+		while (returnValue.length() < 16) {
 			returnValue = "0" + returnValue;
 		}
-		
+
 		return returnValue;
 	}
+
+	
 	
 	
 	public static int signedBinaryToDecimal(String signed){
@@ -266,41 +295,43 @@ public class Microprocessor {
 		if (signed.startsWith("1")){
 			signed = signed.replace('0', '2').replace('1', '0').replace('2', '1');
 			result = 0 - (Integer.parseInt(signed, 2) + 1);
-		}
-		else {
+		} else {
 			result = Integer.parseInt(signed, 2);
 		}
-		
+
 		return result;
 	}
-	public double[] getGlobalAmat(){
-		double globalAmatICache=iCacheLevels.get(0).getCacheAccessTime();
-		double globalAmatDCache=dCacheLevels.get(0).getCacheAccessTime();
-		for(int i =1;i<iCacheLevels.size();i++){
-			double hitRatio = iCacheLevels.get(i-1).getMissPenalty();
+
+	public double[] getGlobalAmat() {
+		double globalAmatICache = iCacheLevels.get(0).getCacheAccessTime();
+		double globalAmatDCache = dCacheLevels.get(0).getCacheAccessTime();
+		for (int i = 1; i < iCacheLevels.size(); i++) {
+			double hitRatio = iCacheLevels.get(i - 1).getMissPenalty();
 			double missPen = iCacheLevels.get(i).getCacheAccessTime();
-			if(i==iCacheLevels.size()-1)
+			if (i == iCacheLevels.size() - 1)
 				missPen = memory.getMemoryAccessTime();
-			globalAmatICache+=hitRatio*missPen;
+			globalAmatICache += hitRatio * missPen;
 		}
-		for(int i =1;i<dCacheLevels.size();i++){
-			double hitRatio = dCacheLevels.get(i-1).getMissPenalty();
+		for (int i = 1; i < dCacheLevels.size(); i++) {
+			double hitRatio = dCacheLevels.get(i - 1).getMissPenalty();
 			double missPen = dCacheLevels.get(i).getCacheAccessTime();
-			if(i==dCacheLevels.size()-1)
+			if (i == dCacheLevels.size() - 1)
 				missPen = memory.getMemoryAccessTime();
-			globalAmatDCache+=hitRatio*missPen;
+			globalAmatDCache += hitRatio * missPen;
 		}
-		double [] result = {globalAmatDCache,globalAmatICache};
+		double[] result = { globalAmatDCache, globalAmatICache };
 		return result;
-		}
-	
-	
+	}
+
 	public void commit() {
-		
-		/* I'm assuming here that "destination" & "value" in the ROB entry are BINARY STRINGS !!
-		 * where the "destination" is either the binary representation for the register number, 
-		 * or it is the binary memory address in case of store instruction.
+
+		/*
+		 * I'm assuming here that "destination" & "value" in the ROB entry are
+		 * BINARY STRINGS !! where the "destination" is either the binary
+		 * representation for the register number, or it is the binary memory
+		 * address in case of store instruction.
 		 */
+
 		
 		for (int i = 0; i < numberOfRobEntries; i++) {
 			String[] currentRobEntry = new String[6];
@@ -313,35 +344,56 @@ public class Microprocessor {
 		}
 		
 		String[] headRobEntry = reorderBuffer.get(head);
+		int instructionNumber = Integer.parseInt(headRobEntry[4], 2);
+		int clockCycle = Integer.parseInt(headRobEntry[5], 2);
+		boolean misprediction = false;
+		
+		String [] robInitialArray = new String[6];
+		for(int i=0; i<6; i++) {
+			robInitialArray[i] = "$$$$$$$$$$$$$$$$";
+		}
 		
 		if (headRobEntry[3].equalsIgnoreCase("yes") || headRobEntry[3].equalsIgnoreCase("y")) {
-			int instructionNumber = Integer.parseInt(headRobEntry[4], 2); //Walid mafrood ye7ot el instruction number in binary
-			int clockCycle = Integer.parseInt(headRobEntry[5], 2);
 			if ((headRobEntry[0].equalsIgnoreCase("store")) || headRobEntry[0].equalsIgnoreCase("st")) {
 				int memoryAddress = Integer.parseInt(headRobEntry[1], 2);
 				readData(to16BinaryStringValue(memoryAddress), false, headRobEntry[2]);	
 				updateClockCycle(instructionNumber, clockCycle, 5);
 			}
+			else if (headRobEntry[0].equalsIgnoreCase("branch")) {
+				if (!branchPrediction.get(instructionNumber).equalsIgnoreCase("$$$$$$$$$$$$$$$$")) {
+					misprediction = true;
+					instToFetchAddress = Integer.parseInt(branchPrediction.get(instructionNumber), 2);
+					for (int i = 1; i <= numberOfRobEntries; i++) {
+						reorderBuffer.put(i, robInitialArray);
+					}
+					deleteMispredictedFromRs(headRobEntry[4]);
+				}
+			} 
 			else {
 				registers.put(Integer.parseInt(headRobEntry[1], 2), headRobEntry[2]);
 				updateClockCycle(instructionNumber, clockCycle, 5);
 			}
+
 			
-			String [] robInitialArray = new String[6];
+			robInitialArray = new String[6]; // had a duplicate local variable error here so i removed the declaration
 			for(int i=0; i<6; i++) {
 				robInitialArray[i] = "$$$$$$$$$$$$$$$$";
-			}	
-			reorderBuffer.put(head, robInitialArray);
-			
-			if (registerStatus.get(Integer.parseInt(headRobEntry[1], 2)) == head ) {
-				registerStatus.put(Integer.parseInt(headRobEntry[1], 2) , 0);
 			}
-			
+
+			reorderBuffer.put(head, robInitialArray);
+
+			if (registerStatus.get(Integer.parseInt(headRobEntry[1], 2)) == head) {
+				registerStatus.put(Integer.parseInt(headRobEntry[1], 2), 0);
+			}
+
 			if (head == numberOfRobEntries) {
 				head = 1;
 			} 
 			else {
 				head++;
+			}
+			if (misprediction) {
+				tail = head;
 			}
 		}
 	}
@@ -351,6 +403,25 @@ public class Microprocessor {
 		instructionClockCycles = clockCycles.get(instructionNumber);
 		instructionClockCycles[type] = clockCycle;
 		clockCycles.put(instructionNumber, instructionClockCycles);
+	}
+	
+	public void deleteMispredictedFromRs (String instructionNumber) {
+		String[] rsEntry = new String[10];
+		Object[] keySet = reservationStations.keySet().toArray();
+		
+		String[] rsInitialArray = new String[10];
+		for(int i=0; i<rsInitialArray.length; i++) {
+			rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
+		}
+		
+		for (int i = 0; i < keySet.length ; i++) {
+			rsEntry = reservationStations.get(keySet[i]);
+			int integerInstructionNumber = Integer.parseInt(instructionNumber, 2);
+			int integerRobInstructionNumber = Integer.parseInt(rsEntry[8], 2);
+			if (integerInstructionNumber <= integerRobInstructionNumber) {
+				reservationStations.put((String) keySet[i], rsInitialArray);
+			}
+		}
 	}
 	
 	public void writeToAwaitingUnits(String result, String robEntryNumber) {
@@ -456,7 +527,7 @@ public class Microprocessor {
 			boolean written = write(insArrayValues[0], insArrayValues[1], insArrayValues[2]);
 			
 			if(written) {
-				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 4);
+				updateClockCycle(insToBeWrittenKey, Integer.parseInt(insArrayValues[2], 2), 3);
 				writeBufferKeys.remove(insToBeWrittenKey);
 			}
 		}
@@ -610,18 +681,15 @@ public class Microprocessor {
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
-				}
-				else if(Integer.parseInt(inner[9],2)>0){
-						// store instruction still not finished
-						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
-				} 
+					}
+					else if(Integer.parseInt(inner[9],2)>0){
+							// store instruction still not finished
+							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+					} 
 				
 				
 			}
-			
 		}
-
-
 		//ADD single precision instruction
 		for(int a = 1 ;a<integerAddSubRs ; a++){
 			String x = "Add"+a;
@@ -685,7 +753,6 @@ public class Microprocessor {
 							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
 						}
 				}
-				
 			}
 			//JMP (to be continued..)
 			if(instToExecute.startsWith("001000")) {
@@ -743,8 +810,6 @@ public class Microprocessor {
 						}
 				}
 			}
-					
-			
 		}
 
 		//ADD double precision instruction
@@ -897,7 +962,6 @@ public class Microprocessor {
 					
 				}
 			}
-
 		}
 
 		//Mul and Div instructions
@@ -931,13 +995,29 @@ public class Microprocessor {
 						//Mul instruction still not finished
 						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
 					}
-				
 			}
-				
-				
-			
 		}
-	}	
+	}
+	
+	public void ClockCycle() {
+		issue();
+		execute();
+		write();
+		commit();
+		
+		programCycles ++;
+	}
+	
+	public void printClockCycleTable() {
+		System.out.println("\t (F)  (I)  (E)  (W)  (C)");
+		for(int i=0; i<clockCycles.size(); i++) {
+			System.out.println("I" + i + "  " + ((clockCycles.get(i)[0]<9)?clockCycles.get(i)[0]+" ":clockCycles.get(i)[0]) +  "  " 
+					+ ((clockCycles.get(i)[1]<9)?clockCycles.get(i)[1]+" ":clockCycles.get(i)[1]) + "  "
+					+ ((clockCycles.get(i)[2]<9)?clockCycles.get(i)[2]+" ":clockCycles.get(i)[2]) + "  " 
+					+ ((clockCycles.get(i)[3]<9)?clockCycles.get(i)[3]+" ":clockCycles.get(i)[3]) + "  " 
+					+ ((clockCycles.get(i)[4]<9)?clockCycles.get(i)[4]+" ":clockCycles.get(i)[4]));
+		}
+	}
 ///////////////////////////////old execute///////////////////////////////////////////////////////////
 //		public void execute() {
 //		int address = this.pc;
@@ -1102,18 +1182,57 @@ public class Microprocessor {
 	
 	public static void main(String[] args) throws Exception {
 		Scanner sc = new Scanner(System.in);
-		System.out.println("Please enter the directory for your file , your file should look like this :-" +"\n"+"\n"
-				+"CODE"+"\n"+"Base Address  (write the base address for your program and remove the 0x ; just write the value)"
-				+"\n"+"first program instruction"+"\n"+"second program instruction"+"\n"+"third program instruction"+"\n"
-				+"....."+"\n"+".....  (the instruction should look like this : instName operand1,operand2,... )"+"\n"
-				+"DATA"+"\n"+"value1,address1"+"\n"+"value2,address2"+"\n"+"value3,address3"+"\n"+"....."+"\n"+".....  "
-				+"(the data address should also be writtin in hexamdecimal with no 0x or H ; just the value)"+"\n"+"\n"+
-				"Some guidelines to follow :"+"\n"+"1)No additional/missing spaces if not specified in the above format are allowed ."
-				+"\n"+"2)No additional/missing semicollons are allowed ."+"\n"+"3)Semicollon should be inserted in between two operands ."+
-				"\n"+"4)No empty lines are allowed within the text or after it which means that the text file should start with the word "+
-				"\"CODE\""+"\n"+"  and ends with the last data value ."+"\n"+"5)The word \"CODE\" comes before your program code at the "
-				+"very first line of the file" +"\n"+"  and the word \"DATA\" comes before the data separting between the code and the data lines."
-				+"\n"+"**ANY TEXT FILE VIOLATING ONE OF THE ABOVE CONDITIONS WILL NOT BE ACCEPTED :)");
+		System.out
+				.println("Please enter the directory for your file , your file should look like this :-"
+						+ "\n"
+						+ "\n"
+						+ "CODE"
+						+ "\n"
+						+ "Base Address  (write the base address for your program and remove the 0x ; just write the value)"
+						+ "\n"
+						+ "first program instruction"
+						+ "\n"
+						+ "second program instruction"
+						+ "\n"
+						+ "third program instruction"
+						+ "\n"
+						+ "....."
+						+ "\n"
+						+ ".....  (the instruction should look like this : instName operand1,operand2,... )"
+						+ "\n"
+						+ "DATA"
+						+ "\n"
+						+ "value1,address1"
+						+ "\n"
+						+ "value2,address2"
+						+ "\n"
+						+ "value3,address3"
+						+ "\n"
+						+ "....."
+						+ "\n"
+						+ ".....  "
+						+ "(the data address should also be writtin in hexamdecimal with no 0x or H ; just the value)"
+						+ "\n"
+						+ "\n"
+						+ "Some guidelines to follow :"
+						+ "\n"
+						+ "1)No additional/missing spaces if not specified in the above format are allowed ."
+						+ "\n"
+						+ "2)No additional/missing semicollons are allowed ."
+						+ "\n"
+						+ "3)Semicollon should be inserted in between two operands ."
+						+ "\n"
+						+ "4)No empty lines are allowed within the text or after it which means that the text file should start with the word "
+						+ "\"CODE\""
+						+ "\n"
+						+ "  and ends with the last data value ."
+						+ "\n"
+						+ "5)The word \"CODE\" comes before your program code at the "
+						+ "very first line of the file"
+						+ "\n"
+						+ "  and the word \"DATA\" comes before the data separting between the code and the data lines."
+						+ "\n"
+						+ "**ANY TEXT FILE VIOLATING ONE OF THE ABOVE CONDITIONS WILL NOT BE ACCEPTED :)");
 		System.out.println("enter the program file path: ");
 		String prog = sc.nextLine();
 		System.out.println("enter the config file path: ");
@@ -1121,5 +1240,508 @@ public class Microprocessor {
 		Microprocessor m = new Microprocessor(new File(config), new File(prog));
 		sc.close();
 		m.execute();
+	}
+
+	public void issue() {
+		/*
+		 * destination registers needs more bits than the available in the
+		 * instructions
+		 */
+		boolean issued [] = new boolean[numberOfWays];
+		for (int i = 0; i < numberOfWays; i++) {
+			String data = instArrayBinary.get(instBuffer[i]);
+			if (data.startsWith("100")) {
+				// load
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+				int j = 1;
+				for (j = 1; j <= loadRs; j++)
+					if (reservationStations.get("Load" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= loadRs 
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("Load" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "load";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					resEntry[3] = "$$$$$$$$$$$$$$$$";
+					resEntry[5] = "$$$$$$$$$$$$$$$$";
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "Load", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("Load"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+
+			} else if (data.startsWith("101")) {
+				// store
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+				int j = 1;
+				for (j = 1; j <= storeRs; j++)
+					if (reservationStations.get("Store" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= storeRs 
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("Store" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "Store";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					resEntry[3] = "$$$$$$$$$$$$$$$$";
+					resEntry[5] = "$$$$$$$$$$$$$$$$";
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "Store", regB + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("Store"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+
+			} else if (data.startsWith("110")) {
+				// BEQ
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "branch";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "branch", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("branch"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+
+			} else if (data.startsWith("111")) {
+				// AddI
+				int regA = Integer.parseInt(data.substring(3, 6), 2);
+				int regB = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+
+				int j = 1;
+				for (j = 1; j <= integerAddSubRs ; j++)
+					if (reservationStations.get("add" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= integerAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("add" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "addi";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = immediateValue;
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "addi", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("add"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+			} else if (data.startsWith("0000000")) {
+				// Add
+				int regA = Integer.parseInt(data.substring(7, 10), 2);
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "addd";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "addd", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+
+			} else if (data.startsWith("0000001")) {
+				// SUB
+				int regA = Integer.parseInt(data.substring(7, 10), 2);
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "subb";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "subb", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+			} else if (data.startsWith("0000010")) {
+				// NAND
+				int regA = Integer.parseInt(data.substring(7, 10), 2);
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "nand";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "nand", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+			} else if (data.startsWith("0000011")) {
+				// MUL
+				int regA = Integer.parseInt(data.substring(7, 10), 2);
+				int regB = Integer.parseInt(data.substring(10, 13), 2);
+				int regC = Integer.parseInt(data.substring(13, 16), 2);
+
+				int j = 1;
+				for (j = 1; j <= multDivRs ; j++)
+					if (reservationStations.get("multd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= multDivRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("multd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "multd";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "multd", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("multd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+			} else if (data.startsWith("001000")) {
+				// JMP
+				int regA = Integer.parseInt(data.substring(6, 9), 2);
+				String immediateValue = data.substring(9, 16);
+
+				int j = 1;
+				for (j = 1; j <= integerAddSubRs ; j++)
+					if (reservationStations.get("add" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= integerAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("add" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "jmp";
+					resEntry[2]="$$$$$$$$$$$$$$$$";
+					resEntry[4]="$$$$$$$$$$$$$$$$";
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "jmp", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("add"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+
+			} else if (data.startsWith("0100000000")) {
+				// JALR
+				int regA = Integer.parseInt(data.substring(10, 13), 2);
+				int regB = Integer.parseInt(data.substring(13, 16), 2);
+
+				int j = 1;
+				for (j = 1; j <= doublePrecisionAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= doublePrecisionAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("addd" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "jalr";
+					if (registerStatus.get(regB) == 0) {
+						resEntry[2] = registers
+								.get(regB);
+						resEntry[4] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[2] = "$$$$$$$$$$$$$$$$";
+						resEntry[4] = to16BinaryStringValue(registerStatus.get(regB));
+					}
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "jalr", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("addd"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+
+			} else if (data.startsWith("0110000000000")) {
+				// RET
+				int regA = Integer.parseInt(data.substring(13, 16), 2);
+				int j = 1;
+				for (j = 1; j <= integerAddSubRs ; j++)
+					if (reservationStations.get("addd" + j)[0]
+							.equalsIgnoreCase("n"))
+						break;
+
+				if (j <= integerAddSubRs
+						&& !(head == tail && !reorderBuffer.get(head)[0]
+								.contains("$"))) {
+					issued[i]=true;
+					String [] resEntry = reservationStations.get("add" + j);
+					
+					resEntry[0] = "Y";
+					resEntry[1] = "ret";
+					resEntry[2]="$$$$$$$$$$$$$$$$";
+					resEntry[4]="$$$$$$$$$$$$$$$$";
+					if (registerStatus.get(regA) == 0) {
+						resEntry[3] = registers
+								.get(regA);
+						resEntry[5] = "$$$$$$$$$$$$$$$$";
+					}else{
+						resEntry[3] = "$$$$$$$$$$$$$$$$";
+						resEntry[5] = to16BinaryStringValue(registerStatus.get(regA));
+					}
+					resEntry[6] = to16BinaryStringValue(tail);
+					resEntry[7] = "$$$$$$$$$$$$$$$$$$$$";
+					resEntry[8] = to16BinaryStringValue(instBuffer[i]);
+					String robEntry[] = { "ret", regA + "", "$$$$$$$$$$$$$$$$", "N" ,to16BinaryStringValue(instBuffer[i])};
+					reorderBuffer.put(tail, robEntry);
+					registerStatus.put(regA, tail);
+					reservationStations.put("add"+j, resEntry);
+					// increment tail correctly
+					tail = (tail == numberOfRobEntries) ? 1 : tail + 1;
+				}
+			}
+		}
+		int index=0;
+		int [] newInstBuffer = new int[numberOfWays];
+		for(int i =0 ;i<numberOfWays;i++){
+			if(!issued[i]){
+				newInstBuffer[index]=instBuffer[i];
+				index++;
+			}else
+				updateClockCycle(instBuffer[i], programCycles, 1);
+		}
+		instBuffer=newInstBuffer;
+		fetch(index);
 	}
 }
