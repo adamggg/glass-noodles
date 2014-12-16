@@ -26,10 +26,10 @@ public class Microprocessor {
 	int tail;
 	HashMap<String, String []> reservationStations;
 	HashMap<Integer, Integer> registerStatus;
-	String[] instBuffer ;
+	int[] instBuffer ;
 	//HashMap<Integer ,Instruction > instArray; //array containing instructions with the needed specifications in the given program 
 	HashMap<Integer ,String> instArrayBinary;//array containing instructions in program order
-	HashMap<Integer ,Boolean> branchPrediction;//keep track of branch instructions misprediction
+	HashMap<Integer ,String> branchPrediction;//keep track of branch instructions misprediction
 	int instToFetchAddress;
 	boolean unconditionalJMP = false;
 	int instNumber = 1; //needed to keep track of order of instructions in the given program 
@@ -48,6 +48,7 @@ public class Microprocessor {
 	HashMap<Integer, String []> writeBuffer;
 	HashMap<Integer, int[]> clockCycles = new HashMap<Integer, int[]>();
 	int writeWaitingCycles;
+	int programCycles = 0;
 	//End Of New Code
 	
 	public Microprocessor(File confFile, File assemblerFile) throws Exception {
@@ -62,7 +63,7 @@ public class Microprocessor {
 		
 		this.numberOfWays = Integer.parseInt(configFile.readLine());
 		this.instBufferSize = Integer.parseInt(configFile.readLine());
-		this.instBuffer = new String[instBufferSize];
+		this.instBuffer = new int[instBufferSize];
 		this.numberOfRobEntries = Integer.parseInt(configFile.readLine());
 		this.loadRs = Integer.parseInt(configFile.readLine());
 		this.storeRs = Integer.parseInt(configFile.readLine());
@@ -136,8 +137,8 @@ public class Microprocessor {
 		//Reservation Stations
 		this.reservationStations = new HashMap<String, String []>();
 		//Initialization of RS Array
-		String [] rsInitialArray = new String[9];
-		for(int i=0; i<9; i++) {
+		String [] rsInitialArray = new String[10];
+		for(int i=0; i<10; i++) {
 			rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
 		
@@ -173,9 +174,6 @@ public class Microprocessor {
 		//WriteBuffer
 		this.writeBuffer = new HashMap<Integer, String []>();
 		
-
-		//InstBuffer
-		this.instBuffer = new String[this.instBufferSize];
 
 		this.writeWaitingCycles = 1;
 		
@@ -507,26 +505,27 @@ public class Microprocessor {
 		return written;
 	}
 	
-	public void fetch(){
-		
+	public void fetch(int j){
+		String fetchedInst ;
 		if(unconditionalJMP == false){
-			int j = 0;
-			while(instToFetchAddress<a.getEndAddress() && j<instBuffer.length){
+			
+			while(instToFetchAddress<a.getEndAddress() && j<numberOfWays){
 				
-				//each two cells in memory is an instruction 
-				instBuffer[j] = readData(to16BinaryStringValue(instToFetchAddress), true, "");
-				instArrayBinary.put(instNumber++, instBuffer[j]);
-				if(instBuffer[j].startsWith("110")){
+				//each two cells in memory is an instruction
+				fetchedInst = readData(to16BinaryStringValue(instToFetchAddress), true, "");
+				instBuffer[j] = instNumber;
+				instArrayBinary.put(instNumber++, fetchedInst);
+				if(fetchedInst.startsWith("110")){
 					//BEQ instruction
-					if((signedBinaryToDecimal(instBuffer[j].substring(9, 16)))<0){
+					if((signedBinaryToDecimal(fetchedInst.substring(9, 16)))<0){
 						//prediction : Taken
-						instToFetchAddress = Integer.parseInt((instBuffer[j]) , 2)+ signedBinaryToDecimal(instBuffer[j].substring(9, 16));
+						instToFetchAddress = Integer.parseInt(fetchedInst , 2)+ signedBinaryToDecimal(fetchedInst.substring(9, 16));
 					}
 					else //prediction : not taken
 						instToFetchAddress += 2;
 						
 				}
-				else if(instBuffer[j].startsWith("0100000000") || instBuffer[j].startsWith("001000") ||instBuffer[j].startsWith("0110000000000")){
+				else if(fetchedInst.startsWith("0100000000") || fetchedInst.startsWith("001000") ||fetchedInst.startsWith("0110000000000")){
 					// JALR or RET or JMP insructions always assumed to be taken 
 					unconditionalJMP = true;
 					
@@ -549,27 +548,74 @@ public class Microprocessor {
 		for(int a = 1 ; a<=loadRs ; a++ ){
 			String x = "Load"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+			if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				// new load instruction
 				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 				String immediateValue = instToExecute.substring(9, 16);
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+				// writing memory address to get data from into A
 				reservationStations.get(x)[7] = to16BinaryStringValue(memoryAddress);
-				//result is the data to be read
-				String result = readData(to16BinaryStringValue(memoryAddress), false, "");
+				// writing the load latency in the last cell in rs
+				reservationStations.get(x)[9] = to16BinaryStringValue(loadLatency);
+
+			}
+			else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// load instruction in execute process
+					if(Integer.parseInt(inner[9],2)==0){
+						// load instruction just finished execution 
+						instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+						int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
+						String immediateValue = instToExecute.substring(9, 16);
+						int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+						//result is the data to be read
+						String result = readData(to16BinaryStringValue(memoryAddress), false, "");
+						String[] writeBufferInnerArray = new String[3];
+						writeBufferInnerArray[0] = result;
+						writeBufferInnerArray[1] = x;
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+loadLatency);
+						//writing to write buffer
+						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
+						reservationStations.get(x)[9] = "-1";
+				}
+				else if(Integer.parseInt(inner[9],2)>0){
+						// load instruction still not finished
+						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+				} 
 			}
 		}
 		//Store instructions
 		for(int a = 1 ; a<=storeRs ; a++){
 			String x = "Store"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
+			if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				// new store instruction
 				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 				String immediateValue = instToExecute.substring(9, 16);
 				int memoryAddress = Integer.parseInt(registers.get(regB), 2) + signedBinaryToDecimal(immediateValue);
+				// writing memory address to write data to into A
 				reservationStations.get(x)[7] = to16BinaryStringValue(memoryAddress);
-				//result is the memory address to write to 
+				// writing the store latency in the last cell in rs
+				reservationStations.get(x)[9] = to16BinaryStringValue(loadLatency);
+			}
+			else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// store instruction in execute process
+					if(Integer.parseInt(inner[9],2)==0){
+						//store instruction just finished execution
+						String[] writeBufferInnerArray = new String[3];
+						writeBufferInnerArray[0] = "$$$$$$$$$$$$$$$$";
+						writeBufferInnerArray[1] = x;
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						//writing to write buffer
+						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
+						reservationStations.get(x)[9] = "-1";
+				}
+				else if(Integer.parseInt(inner[9],2)>0){
+						// store instruction still not finished
+						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+				} 
+				
 				
 			}
 			
@@ -584,44 +630,118 @@ public class Microprocessor {
 			
 			//JALR (to be continued..)
 			if(instToExecute.startsWith("0100000000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
-					//return address to be written in destination (regA)
-					String result = to16BinaryStringValue((Integer.parseInt(instToExecute , 2)+2)); 
-					//instruction address to jump to (regB)
-					int regB = Integer.parseInt(instToExecute.substring(13, 16), 2);
-					instToFetchAddress = Integer.parseInt((registers.get(regB)),2);
-					unconditionalJMP = false;
-				}	
-			}
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					//new JALR instruction
+					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
+				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+						// JALR instruction in process
+						if(Integer.parseInt(inner[9],2) == 0){
+							//JALR instruction just finished execution
+							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
+							reorderBuffer.get(entry)[3] = "yes";
+							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
+							int regA = Integer.parseInt(instToExecute.substring(10, 13), 2);
+							int regB = Integer.parseInt(instToExecute.substring(13, 16), 2);
+							String result = to16BinaryStringValue((Integer.parseInt(instToExecute , 2)+2));
+							if (regA != 0) {
+								registers.put(regA, result);
+							}
+							instToFetchAddress = Integer.parseInt((registers.get(regB)),2);
+							unconditionalJMP = false;
+							reservationStations.get(x)[9] = "-1";
+
+							
+						}
+						else if(Integer.parseInt(inner[9],2)>0){
+							// JALR instruction still not finished
+							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+
+						}
+				}
+			}	
+		
 			//RET (to be continued..)
 			if(instToExecute.startsWith("0110000000000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
-					// intruction address to return to
-					int regA = Integer.parseInt(instToExecute.substring(13, 16), 2);
-					instToFetchAddress = Integer.parseInt((registers.get(regA)),2);
-					unconditionalJMP = false;
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					//new RET instruction
+					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+						//RET instruction in process
+						if(Integer.parseInt(inner[9],2)==0){
+							//RET instruction just finished execution
+							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
+							reorderBuffer.get(entry)[3] = "yes";
+							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
+							int regA = Integer.parseInt(instToExecute.substring(13, 16), 2);
+							instToFetchAddress = Integer.parseInt((registers.get(regA)),2);
+							unconditionalJMP = false;
+							reservationStations.get(x)[9] = "-1";
+							
+						}
+						else if(Integer.parseInt(inner[9],2)>0){
+							// RET instruction still not finished
+							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+						}
+				}
+				
 			}
 			//JMP (to be continued..)
 			if(instToExecute.startsWith("001000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$")){
-					//instruction address to jump to
-					int regA = Integer.parseInt(instToExecute.substring(6, 9), 2);
-					String immediateValue = instToExecute.substring(9, 16);
-					instToFetchAddress = Integer.parseInt(instToExecute , 2)+ Integer.parseInt((registers.get(regA)),2)+ signedBinaryToDecimal(immediateValue);
-					unconditionalJMP = false ; 
-				}	
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// new JMP instruction 
+					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
+				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+						// JMP instruction in process
+						if(Integer.parseInt(inner[9],2)==0){
+							//JMP instruction just finished execution
+							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
+							reorderBuffer.get(entry)[3] = "yes";
+							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
+							int regA = Integer.parseInt(instToExecute.substring(6, 9), 2);
+							String immediateValue = instToExecute.substring(9, 16);
+							instToFetchAddress = Integer.parseInt(instToExecute , 2)+ Integer.parseInt((registers.get(regA)),2)+ signedBinaryToDecimal(immediateValue);
+							unconditionalJMP = false ;
+							reservationStations.get(x)[9] = "-1";
+						}
+						else if(Integer.parseInt(inner[9],2)>0){
+							// RET instruction still not finished
+							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+						}
+				}
+				 
 			}	
 			//ADDI
 			if(instToExecute.startsWith("111")){
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// new ADDI instruction 
 					
-					int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
-					int immediateValue = signedBinaryToDecimal(instToExecute.substring(9, 16));
-					int r = Integer.parseInt(registers.get(regB), 2) + immediateValue;
-					//result is the value to be stored in the destination register(regA)
-					String result = to16BinaryStringValue(r);
-				}	
+					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
+				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+						// ADDI instruction in execute process
+						if(Integer.parseInt(inner[9],2) == 0){
+							//ADDI instruction just finished execution
+							int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
+							int immediateValue = signedBinaryToDecimal(instToExecute.substring(9, 16));
+							int r = Integer.parseInt(registers.get(regB), 2) + immediateValue;
+							//result is the value to be stored in the destination register(regA)
+							String result = to16BinaryStringValue(r);
+							String[] writeBufferInnerArray = new String[3];
+							writeBufferInnerArray[0] = result;
+							writeBufferInnerArray[1] = x;
+							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+							//writing to write buffer
+							writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
+							reservationStations.get(x)[9] = "-1";
+						}
+						else if(Integer.parseInt(inner[9],2)>0){
+							// ADDI instruction still not finished
+							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+						}
+				}
 			}
 					
 			
@@ -633,68 +753,148 @@ public class Microprocessor {
 			inner = reservationStations.get(x);
 			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 			
-			//BEQ instruction (to be continued..)
+			//BEQ instruction 
 			if(instToExecute.startsWith("110")){
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
-					int regA = Integer.parseInt(instToExecute.substring(3, 6), 2);
-					int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
-					String immediateValue = instToExecute.substring(9, 16);
-					String regAValue = registers.get(regA);
-					String regBValue = registers.get(regB);
-					
-					if(signedBinaryToDecimal(immediateValue)<0){
-						//branch prediction : Taken
-						if(regAValue.equalsIgnoreCase(regBValue)){
-							//branch is taken
-							branchPrediction.put(Integer.parseInt(inner[8],2), false);
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// new BEQ instruction
+					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
+				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+						// BEQ instruction in process
+						if(Integer.parseInt(inner[9],2)==0){
+							//BEQ just finished execution
+							int regA = Integer.parseInt(instToExecute.substring(3, 6), 2);
+							int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
+							String immediateValue = instToExecute.substring(9, 16);
+							String regAValue = registers.get(regA);
+							String regBValue = registers.get(regB);
+							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
+							reorderBuffer.get(entry)[3] = "yes";
+							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
+							reservationStations.get(x)[9] = "-1";
+							
+							if(signedBinaryToDecimal(immediateValue)<0){
+								//branch prediction : Taken
+								if(regAValue.equalsIgnoreCase(regBValue)){
+									//branch is taken
+									branchPrediction.put(Integer.parseInt(inner[8],2), "$$$$$$$$$$$$$$$$");
+								}
+								else //misprediction assumed to be taken and turned out to be not taken
+									
+									branchPrediction.put(Integer.parseInt(inner[8],2), to16BinaryStringValue((Integer.parseInt(instToExecute,2)+2)));
+							}
+							else{
+								//branch prediction : not taken
+								if(!regAValue.equalsIgnoreCase(regBValue)){
+									//branch is not taken
+									branchPrediction.put(Integer.parseInt(inner[8],2), "$$$$$$$$$$$$$$$$");
+								}
+								else //misprediction assumed to be not taken and turned out to be taken
+								
+									branchPrediction.put(Integer.parseInt(inner[8],2), to16BinaryStringValue((Integer.parseInt(instToExecute , 2)+ signedBinaryToDecimal(instToExecute.substring(9, 16)))));
+							}
 						}
-						else //misprediction occured
-							branchPrediction.put(Integer.parseInt(inner[8],2), true);
-					}
-					else{
-						//branch prediction : not taken
-						if(!regAValue.equalsIgnoreCase(regBValue)){
-							//branch is not taken
-							branchPrediction.put(Integer.parseInt(inner[8],2), false);
+						else if(Integer.parseInt(inner[9],2)>0){
+							// BEQ instruction still not finished
+							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
 						}
-						else //misprediction occured
-							branchPrediction.put(Integer.parseInt(inner[8],2), true);
-					}
-						
 				}
 			}
 		
 			//ADD instruction
 			if(instToExecute.startsWith("0000000")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
-					
-					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
-					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
-					int r = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
-					//result to be stored in destination register (regA)
-					String result = to16BinaryStringValue(r);
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// new ADD instruction 
+					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
+				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+						// ADD instruction in process 
+						if(Integer.parseInt(inner[9],2)==0){
+							// ADD instruction just finished execution
+							int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+							int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+							int r = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
+							//result to be stored in destination register (regA)
+							String result = to16BinaryStringValue(r);
+							String[] writeBufferInnerArray = new String[3];
+							writeBufferInnerArray[0] = result;
+							writeBufferInnerArray[1] = x;
+							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+							//writing to write buffer
+							writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
+							reservationStations.get(x)[9] = "-1";
+
+						}
+						else if(Integer.parseInt(inner[9],2)>0){
+							// ADD instruction still not finished
+							reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+						}
 				}
 			}
 			//SUB instruction
 			if(instToExecute.startsWith("0000001")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
-					
-					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
-					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
-					int r = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
-					//result to be stored in destination register (regA)
-					String result = to16BinaryStringValue(r);
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// new SUB instruction 
+					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// SUB instruction in process 
+					if(Integer.parseInt(inner[9],2)==0){
+						// SUB instruction just finished execution
+						int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+						int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+						int r = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
+						//result to be stored in destination register (regA)
+						String result = to16BinaryStringValue(r);
+						String[] writeBufferInnerArray = new String[3];
+						writeBufferInnerArray[0] = result;
+						writeBufferInnerArray[1] = x;
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						//writing to write buffer
+						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
+						reservationStations.get(x)[9] = "-1";
+					}
+					else if(Integer.parseInt(inner[9],2)>0){
+						//SUB instruction still not finished
+						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+					}
+					
+				}
+				
+				
+				
+				
 			}
 			//NAND instruction
 			if(instToExecute.startsWith("0000010")) {
-				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$")){
+				if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// new NAND instruction 
+					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
+				}
+				else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && !inner[9].equals("$$$$$$$$$$$$$$$$")){
+					// NAND instruction in process 
+					if(Integer.parseInt(inner[9],2)==0){
+						//NAND instruction just finished execution
+						int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+						int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+						int r = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
+						//result to be stored in destination register (regA)
+						String result = to16BinaryStringValue(r);
+						String[] writeBufferInnerArray = new String[3];
+						writeBufferInnerArray[0] = result;
+						writeBufferInnerArray[1] = x;
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						//writing to write buffer
+						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
+						reservationStations.get(x)[9] = "-1";
+
+
+					}
+					else if(Integer.parseInt(inner[9],2)>0){
+						//NAND instruction still not finished
+						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+					}
 					
-					int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
-					int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
-					int r = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
-					//result to be stored in destination register (regA)
-					String result = to16BinaryStringValue(r);
 				}
 			}
 
@@ -704,15 +904,37 @@ public class Microprocessor {
 		for(int a = 1 ; a<multDivRs ; a++){
 			String x = "Multd"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].equals("$$$$$$$$$$$$$$$$")){
-				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
-				
-				int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
-				int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
-				int r = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
-				//result to be stored in destination register (regA)
-				String result = to16BinaryStringValue(r);
+			if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+				//new Mul instruction 
+				reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 			}
+			else if(inner[4].equals("$$$$$$$$$$$$$$$$") && inner[5].equals("$$$$$$$$$$$$$$$$") && inner[9].equals("$$$$$$$$$$$$$$$$")){
+					//Mul instruction in process
+					if(Integer.parseInt(inner[9],2)==0){
+						//Mul instruction just finished execution
+						instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+						int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
+						int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
+						int r = Integer.parseInt(registers.get(regB),2) * Integer.parseInt(registers.get(regC),2);
+						//result to be stored in destination register (regA)
+						String result = to16BinaryStringValue(r);
+						String[] writeBufferInnerArray = new String[3];
+						writeBufferInnerArray[0] = result;
+						writeBufferInnerArray[1] = x;
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						//writing to write buffer
+						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
+						reservationStations.get(x)[9] = "-1";
+
+					}
+					else if(Integer.parseInt(inner[9],2)>0){
+						//Mul instruction still not finished
+						reservationStations.get(x)[9] = to16BinaryStringValue((Integer.parseInt(reservationStations.get(x)[9],2))-1);
+					}
+				
+			}
+				
+				
 			
 		}
 	}	

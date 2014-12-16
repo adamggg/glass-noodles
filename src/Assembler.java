@@ -316,6 +316,13 @@ public class Assembler {
 			System.out.println(a.getMemoryArray()[i]);
 		System.out.println(a.getBaseAddress());
 		System.out.println(a.getEndAddress());
+	
+		
+		
+		
+		
+		
+		
 //		String[] k = a.fetch(); 
 //		for(int i = 0 ; i<k.length ; i++)
 //			System.out.println(k[i]);
