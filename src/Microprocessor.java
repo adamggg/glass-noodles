@@ -403,10 +403,20 @@ public class Microprocessor {
 	}
 	
 	public void updateClockCycle (int instructionNumber, int clockCycle, int type) {
-		int[] instructionClockCycles = new int [5];
-		instructionClockCycles = clockCycles.get(instructionNumber);
-		instructionClockCycles[type] = clockCycle;
-		clockCycles.put(instructionNumber, instructionClockCycles);
+		if(type ==0){
+			//new instruction
+			int[] instructionClockCycles = new int [5];
+			instructionClockCycles[0] = clockCycle; 
+			for(int i =1 ; i<instructionClockCycles.length;i++)
+				instructionClockCycles[i] = 0;
+			clockCycles.put(instructionNumber, instructionClockCycles);
+		}
+		else{
+			int[] instructionClockCycles = new int [5];
+			instructionClockCycles = clockCycles.get(instructionNumber);
+			instructionClockCycles[type] = clockCycle;
+			clockCycles.put(instructionNumber, instructionClockCycles);
+		}
 	}
 	
 	public void deleteMispredictedFromRs (String instructionNumber) {
@@ -607,6 +617,7 @@ public class Microprocessor {
 				else
 					instToFetchAddress += 2; 
 				//update cycles table
+				
 				updateClockCycle (instNumber, programCycles, 0);
 				j++;
 			}
