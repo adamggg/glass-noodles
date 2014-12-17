@@ -52,6 +52,7 @@ public class Microprocessor {
 	int integerAddSubLatency = 0;
 	int doublePrecisionAddSubLatency = 0;
 	int multDivLatency = 0;
+
 	HashMap<Integer, String []> writeBuffer;
 	HashMap<Integer, int[]> clockCycles = new HashMap<Integer, int[]>();
 	int writeWaitingCycles;
@@ -83,6 +84,7 @@ public class Microprocessor {
 		this.integerAddSubLatency = Integer.parseInt(configFile.readLine());
 		this.doublePrecisionAddSubLatency = Integer.parseInt(configFile.readLine());
 		this.multDivLatency = Integer.parseInt(configFile.readLine());
+
 		configFile.readLine();
 		int memoryAccessTime = Integer.parseInt(configFile.readLine());
 		this.memory = new Memory(memory, baseAddress, memoryAccessTime);
@@ -1278,7 +1280,12 @@ public class Microprocessor {
 		String config = sc.nextLine();
 		Microprocessor m = new Microprocessor(new File(config), new File(prog));
 		sc.close();
-		m.execute();
+//		System.out.print(m.readData(m.to16BinaryStringValue(m.a.getBaseAddress()), true, "")); // da 3ashan a3raf howa shayef awel instruction f awel address
+		m.fetch(0);
+		m.ClockCycle();
+		m.mispredictionPercentage();
+		m.totalNumberOfCycles();
+		m.averageIPC();
 	}
 
 	public void issue() {

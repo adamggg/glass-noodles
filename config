@@ -1,4 +1,18 @@
-Memory Access Time
+Saba7 elfoll 
+numberOfWays
+instBufferSize
+numberOfRobEntries
+loadRs
+storeRs
+integerAddSubRs
+doublePrecisionAddSubRs
+multDivRs
+loadLatency
+storeLatency
+integerAddSubLatency
+doublePrecisionAddSubLatency
+multdivLatency
+Memory Access Time // W da kaman maloosh lazma da 3ashan nefara2 bas mabein el 2 parts
 100
 L1 D-Cache
 1

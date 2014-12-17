@@ -1,0 +1,28 @@
+Saba7 elfoll 
+2
+4
+8
+6
+4
+4
+4
+2
+6
+2
+4
+3
+4
+Memory Access Time // W da kaman maloosh lazma da 3ashan nefara2 bas mabein el 2 parts
+100
+L1 D-Cache
+1
+2
+1
+wt
+3
+L1 I-Cache
+1
+2
+1
+wt
+3
