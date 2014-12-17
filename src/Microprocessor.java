@@ -1,15 +1,12 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Set;
 
-import sun.security.x509.IssuerAlternativeNameExtension;
 
-import com.sun.xml.internal.ws.api.pipe.NextAction;
 
 public class Microprocessor {
 
@@ -153,7 +150,10 @@ public class Microprocessor {
 		//Initialization of RS Array
 		String [] rsInitialArray = new String[10];
 		for(int i=0; i<10; i++) {
-			rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
+			if(i==0)
+				rsInitialArray[i] = "n";
+			else
+				rsInitialArray[i] = "$$$$$$$$$$$$$$$$";
 		}
 		
 		
