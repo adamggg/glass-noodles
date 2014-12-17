@@ -1,4 +1,20 @@
-Memory Access Time
+Tomasulo Part //El satr da kda kda maloosh lazma ya3ny ekteb fee elly enta 3awzo 
+numberOfWays 
+instBufferSize
+instBuffer
+numberOfRobEntries
+loadRs
+storeRs
+integerAddSubRs
+doublePrecisionAddSubRs
+multDivRs
+loadLatency
+storeLatency
+integerAddSubLatency
+doublePrecisionAddSubLatency
+multiplyLatency
+divideLatency
+Memory Access Time // W da kaman maloosh lazma da 3ashan nefara2 bas mabein el 2 parts
 100
 L1 D-Cache
 1
