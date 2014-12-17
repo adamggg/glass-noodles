@@ -73,6 +73,7 @@ public class Microprocessor {
 		this.numberOfWays = Integer.parseInt(configFile.readLine());
 		this.instBufferSize = Integer.parseInt(configFile.readLine());
 		this.instBuffer = new int[instBufferSize];
+		this.instArrayBinary  = new HashMap<Integer, String>();
 		this.numberOfRobEntries = Integer.parseInt(configFile.readLine());
 		this.loadRs = Integer.parseInt(configFile.readLine());
 		this.storeRs = Integer.parseInt(configFile.readLine());
