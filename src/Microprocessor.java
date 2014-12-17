@@ -51,6 +51,8 @@ public class Microprocessor {
 	int storeLatency = 0;
 	int integerAddSubLatency = 0;
 	int doublePrecisionAddSubLatency = 0;
+	int multiplyLatency = 0;
+	int divideLatency = 0;
 	HashMap<Integer, String []> writeBuffer;
 	HashMap<Integer, int[]> clockCycles = new HashMap<Integer, int[]>();
 	int writeWaitingCycles;
@@ -81,6 +83,8 @@ public class Microprocessor {
 		this.storeLatency = Integer.parseInt(configFile.readLine());
 		this.integerAddSubLatency = Integer.parseInt(configFile.readLine());
 		this.doublePrecisionAddSubLatency = Integer.parseInt(configFile.readLine());
+		this.multiplyLatency = Integer.parseInt(configFile.readLine());
+		this.divideLatency = Integer.parseInt(configFile.readLine());
 		
 		configFile.readLine();
 		int memoryAccessTime = Integer.parseInt(configFile.readLine());
