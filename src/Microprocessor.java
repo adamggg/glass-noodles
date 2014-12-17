@@ -348,9 +348,11 @@ public class Microprocessor {
 		}
 		
 		String[] headRobEntry = reorderBuffer.get(head);
+		int instructionNumber = 0;
+		int clockCycle = 0;
 		if(!headRobEntry[4].equalsIgnoreCase("$$$$$$$$$$$$$$$$")){
-		int instructionNumber = Integer.parseInt(headRobEntry[4], 2);
-		int clockCycle = Integer.parseInt(headRobEntry[5], 2);
+			instructionNumber = Integer.parseInt(headRobEntry[4], 2);
+			clockCycle = Integer.parseInt(headRobEntry[5], 2);
 		}
 		boolean misprediction = false;
 		
