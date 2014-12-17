@@ -661,7 +661,7 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+loadLatency);
+						writeBufferInnerArray[2] = to16BinaryStringValue(programCycles+loadLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
@@ -696,7 +696,7 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = "$$$$$$$$$$$$$$$$";
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+storeLatency);
+						writeBufferInnerArray[2] = to16BinaryStringValue(programCycles+storeLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
@@ -834,7 +834,7 @@ public class Microprocessor {
 							String[] writeBufferInnerArray = new String[3];
 							writeBufferInnerArray[0] = result;
 							writeBufferInnerArray[1] = x;
-							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+integerAddSubLatency);
+							writeBufferInnerArray[2] = to16BinaryStringValue(programCycles+integerAddSubLatency);
 							//writing to write buffer
 							writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 							reservationStations.get(x)[9] = "-1";
@@ -927,7 +927,7 @@ public class Microprocessor {
 							String[] writeBufferInnerArray = new String[3];
 							writeBufferInnerArray[0] = result;
 							writeBufferInnerArray[1] = x;
-							writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
+							writeBufferInnerArray[2] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
 							//writing to write buffer
 							writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 							reservationStations.get(x)[9] = "-1";
@@ -961,7 +961,7 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
+						writeBufferInnerArray[2] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
@@ -994,7 +994,7 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
+						writeBufferInnerArray[2] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
@@ -1031,7 +1031,7 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+multDivLatency);
+						writeBufferInnerArray[2] = to16BinaryStringValue(programCycles+multDivLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
