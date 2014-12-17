@@ -337,7 +337,7 @@ public class Microprocessor {
 		 */
 
 		
-		for (int i = 0; i < numberOfRobEntries; i++) {
+		for (int i = 1 ; i <= numberOfRobEntries; i++) {
 			String[] currentRobEntry = new String[6];
 			currentRobEntry = reorderBuffer.get(i);
 			if(!currentRobEntry[5].equalsIgnoreCase("$$$$$$$$$$$$$$$$")) {
