@@ -1033,6 +1033,13 @@ public class Microprocessor {
 					+ ((clockCycles.get(i)[4]<9)?clockCycles.get(i)[4]+" ":clockCycles.get(i)[4]));
 		}
 	}
+	public void mispredictionPercentage(){
+		
+		int numberOfmisprediction;
+		for(int i =1 ; i<branchPrediction.k;i++){
+			if(branchPrediction.get(i))
+		}
+	}
 ///////////////////////////////old execute///////////////////////////////////////////////////////////
 //		public void execute() {
 //		int address = this.pc;
@@ -1203,7 +1210,7 @@ public class Microprocessor {
 						+ "\n"
 						+ "CODE"
 						+ "\n"
-						+ "Base Address  (write the base address for your program and remove the 0x ; just write the value)"
+						+ "Base Address  (write the base address for your program in hexadecimal format 0x...)"
 						+ "\n"
 						+ "first program instruction"
 						+ "\n"
@@ -1226,7 +1233,7 @@ public class Microprocessor {
 						+ "....."
 						+ "\n"
 						+ ".....  "
-						+ "(the data address should also be writtin in hexamdecimal with no 0x or H ; just the value)"
+						+ "(the data address should also be writtin in hexamdecimal format 0x...)"
 						+ "\n"
 						+ "\n"
 						+ "Some guidelines to follow :"
