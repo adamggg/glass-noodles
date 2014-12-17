@@ -51,6 +51,7 @@ public class Microprocessor {
 	int storeLatency = 0;
 	int integerAddSubLatency = 0;
 	int doublePrecisionAddSubLatency = 0;
+	int multDivLatency = 0;
 	HashMap<Integer, String []> writeBuffer;
 	HashMap<Integer, int[]> clockCycles = new HashMap<Integer, int[]>();
 	int writeWaitingCycles;
@@ -81,7 +82,7 @@ public class Microprocessor {
 		this.storeLatency = Integer.parseInt(configFile.readLine());
 		this.integerAddSubLatency = Integer.parseInt(configFile.readLine());
 		this.doublePrecisionAddSubLatency = Integer.parseInt(configFile.readLine());
-		
+		this.multDivLatency = Integer.parseInt(configFile.readLine());
 		configFile.readLine();
 		int memoryAccessTime = Integer.parseInt(configFile.readLine());
 		this.memory = new Memory(memory, baseAddress, memoryAccessTime);
@@ -983,7 +984,7 @@ public class Microprocessor {
 			inner = reservationStations.get(x);
 			if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 				//new Mul instruction 
-				reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
+				reservationStations.get(x)[9] = to16BinaryStringValue(multDivLatency);
 			}
 			else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 					//Mul instruction in process
@@ -998,12 +999,12 @@ public class Microprocessor {
 						String[] writeBufferInnerArray = new String[3];
 						writeBufferInnerArray[0] = result;
 						writeBufferInnerArray[1] = x;
-						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+doublePrecisionAddSubLatency);
+						writeBufferInnerArray[3] = to16BinaryStringValue(programCycles+multDivLatency);
 						//writing to write buffer
 						writeBuffer.put(Integer.parseInt(inner[8],2), writeBufferInnerArray);
 						reservationStations.get(x)[9] = "-1";
 						//update cycles table
-						updateClockCycle(Integer.parseInt(inner[8],2), programCycles+doublePrecisionAddSubLatency, 2);
+						updateClockCycle(Integer.parseInt(inner[8],2), programCycles+multDivLatency, 2);
 
 					}
 					else if(Integer.parseInt(inner[9],2)>0){
