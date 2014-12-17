@@ -1035,10 +1035,26 @@ public class Microprocessor {
 	}
 	public void mispredictionPercentage(){
 		
-		int numberOfmisprediction;
-		for(int i =1 ; i<branchPrediction.k;i++){
-			if(branchPrediction.get(i))
+		int numberOfmisprediction = 0;
+		for(int i : branchPrediction.keySet()){
+			if(!branchPrediction.get(i).startsWith("$"))
+				numberOfmisprediction++;
 		}
+		System.out.println("The branch misprediction percentage is : "+((numberOfmisprediction*100)/branchPrediction.size())+"%");
+	}
+	public void totalNumberOfCycles(){
+		int lastInstNumber = clockCycles.size();
+		int [] inner = clockCycles.get(lastInstNumber);
+		System.out.println("The program total execution time is : "+inner[4]+" Cycles");
+	}
+	public void averageIPC(){
+		int total = 0;
+		for(int i : clockCycles.keySet()){
+			total += clockCycles.get(i)[4]-clockCycles.get(i)[0];
+		}
+		int cpi = total/clockCycles.size();
+		System.out.println("The approximate number of instructions per cycle IPC is : "+(1/cpi)+" instruction per cycle");
+		
 	}
 ///////////////////////////////old execute///////////////////////////////////////////////////////////
 //		public void execute() {
