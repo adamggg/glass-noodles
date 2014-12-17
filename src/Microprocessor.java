@@ -634,7 +634,7 @@ public class Microprocessor {
 		for(int a = 1 ; a<=loadRs ; a++ ){
 			String x = "Load"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[9].startsWith("$")){
 				// new load instruction
 				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
@@ -646,7 +646,7 @@ public class Microprocessor {
 				reservationStations.get(x)[9] = to16BinaryStringValue(loadLatency);
 
 			}
-			else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
+			else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && !inner[9].startsWith("$")){
 					// load instruction in execute process
 					if(Integer.parseInt(inner[9],2)==0){
 						// load instruction just finished execution 
@@ -676,7 +676,7 @@ public class Microprocessor {
 		for(int a = 1 ; a<=storeRs ; a++){
 			String x = "Store"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[9].startsWith("$")){
 				// new store instruction
 				instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 				int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
@@ -687,7 +687,7 @@ public class Microprocessor {
 				// writing the store latency in the last cell in rs
 				reservationStations.get(x)[9] = to16BinaryStringValue(storeLatency);
 			}
-			else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
+			else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && !inner[9].startsWith("$")){
 					// store instruction in execute process
 					if(Integer.parseInt(inner[9],2)==0){
 						//store instruction just finished execution
@@ -713,18 +713,20 @@ public class Microprocessor {
 		for(int a = 1 ;a<integerAddSubRs ; a++){
 			String x = "Add"+a;
 			inner = reservationStations.get(x);
-			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+			
 			
 			//JALR instruction
-			if(instToExecute.startsWith("0100000000")) {
-				if(inner[4].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("jalr")) {
+				
+				if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[9].startsWith("$")){
 					//new JALR instruction
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && !inner[9].startsWith("$")){
 						// JALR instruction in process
 						if(Integer.parseInt(inner[9],2) == 0){
 							//JALR instruction just finished execution
+							instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
 							reorderBuffer.get(entry)[3] = "yes";
 							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
@@ -751,15 +753,17 @@ public class Microprocessor {
 			}	
 		
 			//RET instruction
-			if(instToExecute.startsWith("0110000000000")) {
-				if(inner[4].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("ret")) {
+				
+				if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[9].startsWith("$")){
 					//new RET instruction
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && !inner[9].startsWith("$")){
 						//RET instruction in process
 						if(Integer.parseInt(inner[9],2)==0){
 							//RET instruction just finished execution
+							instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
 							reorderBuffer.get(entry)[3] = "yes";
 							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
@@ -778,15 +782,17 @@ public class Microprocessor {
 				}
 			}
 			//JMP instruction
-			if(instToExecute.startsWith("001000")) {
-				if(inner[4].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("jmp")) {
+				
+				if(inner[0].equalsIgnoreCase("Y") &&  inner[4].startsWith("$") && inner[9].startsWith("$")){
 					// new JMP instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].startsWith("$") && !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && !inner[9].startsWith("$")){
 						// JMP instruction in process
 						if(Integer.parseInt(inner[9],2)==0){
 							//JMP instruction just finished execution
+							instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 							int entry = Integer.parseInt(reservationStations.get(x)[6],2);
 							reorderBuffer.get(entry)[3] = "yes";
 							reorderBuffer.get(entry)[5] = to16BinaryStringValue(integerAddSubLatency+programCycles);
@@ -806,16 +812,18 @@ public class Microprocessor {
 				 
 			}	
 			//ADDI
-			if(instToExecute.startsWith("111")){
-				if(inner[4].startsWith("$")&& inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("addi")){
+				
+				if(inner[0].equalsIgnoreCase("Y") &&  inner[4].startsWith("$")&& inner[9].startsWith("$")){
 					// new ADDI instruction 
 					
 					reservationStations.get(x)[9] = to16BinaryStringValue(integerAddSubLatency);
 				}
-				else if(inner[4].startsWith("$")&& !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$")&& !inner[9].startsWith("$")){
 						// ADDI instruction in execute process
 						if(Integer.parseInt(inner[9],2) == 0){
 							//ADDI instruction just finished execution
+							instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 							int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 							int immediateValue = signedBinaryToDecimal(instToExecute.substring(9, 16));
 							int r = Integer.parseInt(registers.get(regB), 2) + immediateValue;
@@ -843,18 +851,20 @@ public class Microprocessor {
 		for(int a = 1 ; a<doublePrecisionAddSubRs ; a++){
 			String x = "Addd"+a;
 			inner = reservationStations.get(x);
-			instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
+			
 			
 			//BEQ instruction 
-			if(instToExecute.startsWith("110")){
-				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("branch")){
+				
+				if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new BEQ instruction
 					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].startsWith("$") && inner[5].startsWith("$")&& !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$")&& !inner[9].startsWith("$")){
 						// BEQ instruction in process
 						if(Integer.parseInt(inner[9],2)==0){
 							//BEQ just finished execution
+							instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 							int regA = Integer.parseInt(instToExecute.substring(3, 6), 2);
 							int regB = Integer.parseInt(instToExecute.substring(6, 9), 2);
 							String immediateValue = instToExecute.substring(9, 16);
@@ -896,15 +906,17 @@ public class Microprocessor {
 			}
 		
 			//ADD instruction
-			if(instToExecute.startsWith("0000000")) {
-				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("addd")) {
+				
+				if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new ADD instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 						// ADD instruction in process 
 						if(Integer.parseInt(inner[9],2)==0){
 							// ADD instruction just finished execution
+							instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 							int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 							int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
 							int r = Integer.parseInt(registers.get(regB),2) + Integer.parseInt(registers.get(regC),2);
@@ -928,15 +940,17 @@ public class Microprocessor {
 				}
 			}
 			//SUB instruction
-			if(instToExecute.startsWith("0000001")) {
-				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("subb")) {
+				
+				if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new SUB instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 					// SUB instruction in process 
 					if(Integer.parseInt(inner[9],2)==0){
 						// SUB instruction just finished execution
+						instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 						int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 						int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
 						int r = Integer.parseInt(registers.get(regB),2) - Integer.parseInt(registers.get(regC),2);
@@ -959,15 +973,17 @@ public class Microprocessor {
 				}
 			}
 			//NAND instruction
-			if(instToExecute.startsWith("0000010")) {
-				if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[1].equalsIgnoreCase("nand")) {
+				
+				if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 					// new NAND instruction 
 					reservationStations.get(x)[9] = to16BinaryStringValue(doublePrecisionAddSubLatency);
 				}
-				else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
+				else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 					// NAND instruction in process 
 					if(Integer.parseInt(inner[9],2)==0){
 						//NAND instruction just finished execution
+						instToExecute = instArrayBinary.get(Integer.parseInt(inner[8] , 2));
 						int regB = Integer.parseInt(instToExecute.substring(10, 13), 2);
 						int regC = Integer.parseInt(instToExecute.substring(13, 16), 2);
 						int r = (Integer.parseInt(registers.get(regB),2) & Integer.parseInt(registers.get(regC),2));
@@ -992,15 +1008,15 @@ public class Microprocessor {
 			}
 		}
 
-		//Mul and Div instructions /////////////////////////(Note: multdiv latency missing)/////////////////////////////////// 
+		//Mul and Div instructions 
 		for(int a = 1 ; a<multDivRs ; a++){
 			String x = "Multd"+a;
 			inner = reservationStations.get(x);
-			if(inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
+			if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && inner[9].startsWith("$")){
 				//new Mul instruction 
 				reservationStations.get(x)[9] = to16BinaryStringValue(multDivLatency);
 			}
-			else if(inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
+			else if(inner[0].equalsIgnoreCase("Y") && inner[4].startsWith("$") && inner[5].startsWith("$") && !inner[9].startsWith("$")){
 					//Mul instruction in process
 					if(Integer.parseInt(inner[9],2)==0){
 						//Mul instruction just finished execution
