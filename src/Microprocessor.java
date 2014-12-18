@@ -447,7 +447,7 @@ public class Microprocessor {
 		String [] rsEntry;
 		
 		for(int j = 1; j<=loadRs; j++) {
-			rsName = rsName + "Load" + j;
+			rsName ="Load" + j;
 			rsEntry = reservationStations.get(rsName);
 			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
 				rsEntry[2] = result;
@@ -462,7 +462,7 @@ public class Microprocessor {
 		}
 		
 		for(int j = 1; j<=storeRs; j++) {
-			rsName = rsName + "Store" + j;
+			rsName ="Store" + j;
 			rsEntry = reservationStations.get(rsName);
 			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
 				rsEntry[2] = result;
@@ -477,7 +477,7 @@ public class Microprocessor {
 		}
 		
 		for(int j = 1; j<=integerAddSubRs; j++) {
-			rsName = rsName + "Add" + j;
+			rsName ="Add" + j;
 			rsEntry = reservationStations.get(rsName);
 			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
 				rsEntry[2] = result;
@@ -492,7 +492,7 @@ public class Microprocessor {
 		}
 		
 		for(int j = 1; j<=doublePrecisionAddSubRs; j++) {
-			rsName = rsName + "Addd" + j;
+			rsName ="Addd" + j;
 			rsEntry = reservationStations.get(rsName);
 			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
 				rsEntry[2] = result;
@@ -507,7 +507,7 @@ public class Microprocessor {
 		}
 		
 		for(int j = 1; j<=multDivRs; j++) {
-			rsName = rsName + "Multd" + j;
+			rsName ="Multd" + j;
 			rsEntry = reservationStations.get(rsName);
 			if(rsEntry[4].equalsIgnoreCase(robEntryNumber)) {
 				rsEntry[2] = result;
@@ -616,6 +616,7 @@ public class Microprocessor {
 				else if(fetchedInst.startsWith("0100000000") || fetchedInst.startsWith("001000") ||fetchedInst.startsWith("0110000000000")){
 					// JALR or RET or JMP insructions always assumed to be taken 
 					unconditionalJMP = true;
+					
 					
 				}
 				else
